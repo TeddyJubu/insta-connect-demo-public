@@ -67,7 +67,7 @@
         <p class="mt-4 text-lg text-slate-600">
           Launch the Meta OAuth flow in a single tap, confirm the accounts you manage, and fine-tune webhook subscriptions without leaving this page.
         </p>
-        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div class="mt-8 flex flex-col items-center justify-center sm:flex-row">
           <button
             id="connect-btn"
             class="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
@@ -75,15 +75,6 @@
           >
             Connect Instagram
           </button>
-          <a
-            href="/privacy-policy"
-            class="inline-flex items-center gap-2 text-base font-medium text-slate-600 transition hover:text-slate-900"
-          >
-            <span>View privacy policy</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5H21m0 0v7.5M21 4.5l-9 9m-3-3H3m0 0v9m0-9l9 9"></path>
-            </svg>
-          </a>
         </div>
       </header>
 
@@ -129,8 +120,8 @@
           <div class="h-full rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl shadow-slate-900/5 backdrop-blur">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <h2 class="text-xl font-semibold text-slate-900">Webhook subscriptions</h2>
-                <p class="mt-1 text-sm text-slate-500">Toggle the fields to receive the events you care about.</p>
+                <h2 class="text-xl font-semibold text-slate-900">Connect to real-time updates</h2>
+                <p class="mt-1 text-sm text-slate-500">Choose the Instagram moments we’ll send to your app automatically.</p>
               </div>
               <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">
                 Real-time
@@ -180,6 +171,18 @@
         </div>
       </section>
     </main>
+
+    <footer class="mt-16 border-t border-slate-200 bg-white/70 py-6 text-center text-sm text-slate-500">
+      <a
+        href="/privacy-policy"
+        class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+      >
+        <span>View privacy policy</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-4 w-4">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5H21m0 0v7.5M21 4.5l-9 9m-3-3H3m0 0v9m0-9l9 9"></path>
+        </svg>
+      </a>
+    </footer>
 
     <div
       id="feedback"
@@ -283,41 +286,53 @@
 
         AVAILABLE_WEBHOOKS.forEach((hook) => {
           const wrapper = document.createElement('div');
-          wrapper.className = 'flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition sm:flex-row sm:items-center sm:justify-between';
+          wrapper.className = 'rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition';
 
-          const textBlock = document.createElement('div');
-          const title = document.createElement('h3');
-          title.className = 'text-base font-semibold text-slate-900';
+          const topRow = document.createElement('div');
+          topRow.className = 'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between';
+
+          const toggleButton = document.createElement('button');
+          toggleButton.type = 'button';
+          toggleButton.className = 'flex w-full items-center justify-between gap-2 text-left text-base font-semibold text-slate-900 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500';
+          toggleButton.setAttribute('aria-expanded', 'false');
+
+          const title = document.createElement('span');
+          title.className = 'text-left';
           title.textContent = hook.title;
 
-          const description = document.createElement('p');
-          description.className = 'mt-1 text-sm text-slate-500';
-          description.textContent = hook.description;
-          textBlock.appendChild(title);
-          textBlock.appendChild(description);
+          const chevron = document.createElement('span');
+          chevron.className = 'text-sm text-slate-400 transition-transform duration-200';
+          chevron.textContent = '▾';
 
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.dataset.field = hook.id;
-          button.className = 'inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+          toggleButton.appendChild(title);
+          toggleButton.appendChild(chevron);
+
+          const actionButton = document.createElement('button');
+          actionButton.type = 'button';
+          actionButton.dataset.field = hook.id;
+          actionButton.className = 'inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+
+          const description = document.createElement('p');
+          description.className = 'mt-2 hidden text-sm text-slate-500';
+          description.textContent = hook.description;
 
           const isActive = activeFields.has(hook.id);
 
           if (isActive) {
-            button.textContent = 'Subscribed';
-            button.classList.add('border-transparent', 'bg-brand-600', 'text-white', 'hover:bg-brand-700', 'focus-visible:outline-brand-600');
+            actionButton.textContent = 'Subscribed';
+            actionButton.classList.add('border-transparent', 'bg-brand-600', 'text-white', 'hover:bg-brand-700', 'focus-visible:outline-brand-600');
           } else {
-            button.textContent = 'Subscribe';
-            button.classList.add('border-slate-200', 'bg-white', 'text-slate-700', 'hover:border-slate-300', 'hover:text-slate-900', 'focus-visible:outline-slate-900');
+            actionButton.textContent = 'Subscribe';
+            actionButton.classList.add('border-slate-200', 'bg-white', 'text-slate-700', 'hover:border-slate-300', 'hover:text-slate-900', 'focus-visible:outline-slate-900');
           }
 
-          button.addEventListener('click', () => {
+          actionButton.addEventListener('click', () => {
             if (!cachedStatus.connected) {
               showFeedback('Connect your account first to manage webhooks.', 'info');
               return;
             }
-            button.disabled = true;
-            button.classList.add('opacity-60');
+            actionButton.disabled = true;
+            actionButton.classList.add('opacity-60');
             const action = isActive ? unsubscribeWebhook(hook.id) : subscribeWebhook(hook.id);
             action
               .catch((err) => {
@@ -325,13 +340,29 @@
                 showFeedback(err.message || 'Unable to update webhook.', 'error');
               })
               .finally(() => {
-                button.disabled = false;
-                button.classList.remove('opacity-60');
+                actionButton.disabled = false;
+                actionButton.classList.remove('opacity-60');
               });
           });
 
-          wrapper.appendChild(textBlock);
-          wrapper.appendChild(button);
+          let expanded = false;
+          const setExpanded = (value) => {
+            expanded = value;
+            toggleButton.setAttribute('aria-expanded', String(expanded));
+            chevron.textContent = expanded ? '▴' : '▾';
+            description.classList.toggle('hidden', !expanded);
+          };
+
+          toggleButton.addEventListener('click', () => {
+            setExpanded(!expanded);
+          });
+
+          setExpanded(false);
+
+          topRow.appendChild(toggleButton);
+          topRow.appendChild(actionButton);
+          wrapper.appendChild(topRow);
+          wrapper.appendChild(description);
           webhookList.appendChild(wrapper);
         });
       }
