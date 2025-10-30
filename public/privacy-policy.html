@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy &mdash; Insta Connect Demo</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 760px; margin: 40px auto; padding: 0 16px; line-height: 1.6; }
+      h1, h2, h3 { line-height: 1.3; }
+      a { color: #2563eb; }
+      section { margin-bottom: 32px; }
+      footer { font-size: 14px; color: #555; margin-top: 48px; }
+    </style>
+  </head>
+  <body>
+    <h1>Privacy Policy</h1>
+    <p>Last updated: October 29, 2025</p>
+
+    <section>
+      <h2>Overview</h2>
+      <p>This demo application (&ldquo;Service&rdquo;) connects a Facebook Page and Instagram account using the Meta Graph API. It is operated by Syeed Md. Jobayer solely for demonstration and evaluation purposes.</p>
+    </section>
+
+    <section>
+      <h2>Information We Receive</h2>
+      <p>When you authorize the Service, Meta shares OAuth access tokens and basic Page or Instagram Business Account details. No personal profile data is requested.</p>
+      <ul>
+        <li>Page metadata (name and ID)</li>
+        <li>Instagram Business Account metadata (username and ID)</li>
+        <li>Webhook events that you have explicitly enabled in Meta</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>How We Use Information</h2>
+      <p>The Service only uses the received data to demonstrate login state, list connected assets, and confirm webhook delivery. Data is not sold, licensed, or shared with third parties.</p>
+    </section>
+
+    <section>
+      <h2>Data Storage &amp; Retention</h2>
+      <p>Tokens and asset metadata are kept in transient, in-memory storage while the server is running. Restarting the Service clears this data. Webhook payloads are written to application logs for troubleshooting and are automatically rotated by the host; logs are typically retained for no longer than 30 days.</p>
+    </section>
+
+    <section>
+      <h2>Security</h2>
+      <p>OAuth secrets and verify tokens are stored in environment variables on the server. HTTPS is enforced for all public endpoints, and only authorized operators have shell access to the infrastructure.</p>
+    </section>
+
+    <section>
+      <h2>Your Choices</h2>
+      <p>You can remove the integration at any time by revoking the app&rsquo;s permissions from your Meta Business settings. If you need us to delete any residual log data sooner, contact us using the details below.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>If you have questions about this policy or how your information is handled, email <a href="mailto:teddy@tiblings.com">teddy@tiblings.com</a> or write to Syeed Md. Jobayer, Mirpur, Dhaka, Bangladesh.</p>
+    </section>
+
+    <footer>
+      <p>&copy; 2025 Syeed Md. Jobayer</p>
+    </footer>
+  </body>
+</html>

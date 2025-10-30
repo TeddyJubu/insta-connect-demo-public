@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Environment & local secrets
+.env
+
+# Logs
+server.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+
+# Coverage / test artifacts
+coverage/
+
