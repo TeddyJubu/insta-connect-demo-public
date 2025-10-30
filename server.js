@@ -3,6 +3,7 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
 const path = require('path');
+const helmet = require('helmet');
 
 const fetch = global.fetch || ((...args) => import('node-fetch').then(({ default: nodeFetch }) => nodeFetch(...args)));
 
@@ -15,14 +16,41 @@ const {
   SCOPES,
   OAUTH_STATE_SECRET,
   VERIFY_TOKEN,
+  COOKIE_DOMAIN,
+  NODE_ENV,
+  ENFORCE_HTTPS,
+  OAUTH_STATE_TTL_MS,
 } = process.env;
+
+const isProduction = NODE_ENV === 'production';
+const shouldEnforceHttps = ENFORCE_HTTPS === 'true';
+const DEFAULT_STATE_TTL = 10 * 60 * 1000;
+const parsedStateTtl = Number(OAUTH_STATE_TTL_MS);
+const STATE_TTL = Number.isFinite(parsedStateTtl) && parsedStateTtl > 0 ? parsedStateTtl : DEFAULT_STATE_TTL;
+const stateStore = new Map();
 
 if (!APP_ID || !APP_SECRET || !OAUTH_REDIRECT_URI || !SCOPES || !OAUTH_STATE_SECRET || !VERIFY_TOKEN) {
   console.warn('⚠️  Missing required OAuth environment variables; check your .env file.');
 }
 
+app.set('trust proxy', 1);
+app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
+
+if (shouldEnforceHttps) {
+  app.use((req, res, next) => {
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    if (req.secure || forwardedProto === 'https') {
+      return next();
+    }
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      return res.redirect(301, `https://${req.headers.host}${req.originalUrl}`);
+    }
+    return res.status(403).send('HTTPS is required.');
+  });
+}
+
 app.use(express.static('public'));
 
 // Keep demo state in memory; use persistent storage in production.
@@ -32,6 +60,28 @@ const store = {
   instagram: null,
   webhookFields: new Set(),
 };
+
+const oauthCookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: isProduction,
+  maxAge: STATE_TTL,
+};
+
+if (COOKIE_DOMAIN) {
+  oauthCookieOptions.domain = COOKIE_DOMAIN;
+}
+
+function trimExpiredStates() {
+  const now = Date.now();
+  for (const [value, issuedAt] of stateStore.entries()) {
+    if (now - issuedAt > STATE_TTL) {
+      stateStore.delete(value);
+    }
+  }
+}
+
+setInterval(trimExpiredStates, STATE_TTL).unref?.();
 
 const OAUTH_BASE = 'https://www.facebook.com/v20.0/dialog/oauth';
 const GRAPH_BASE = 'https://graph.facebook.com/v20.0';
@@ -47,7 +97,10 @@ function buildAuthUrl(state) {
 }
 
 function makeState() {
-  return crypto.createHmac('sha256', OAUTH_STATE_SECRET).update(String(Date.now())).digest('hex');
+  const randomSeed = crypto.randomBytes(32).toString('hex');
+  const state = crypto.createHmac('sha256', OAUTH_STATE_SECRET).update(randomSeed).digest('hex');
+  stateStore.set(state, Date.now());
+  return state;
 }
 
 app.get('/', (_req, res) => {
@@ -57,7 +110,7 @@ app.get('/', (_req, res) => {
 app.get('/login', (req, res) => {
   try {
     const state = makeState();
-    res.cookie('oauth_state', state, { httpOnly: true, sameSite: 'lax' });
+    res.cookie('oauth_state', state, oauthCookieOptions);
     res.redirect(buildAuthUrl(state));
   } catch (err) {
     res.status(500).send(String(err));
@@ -68,9 +121,15 @@ app.get('/oauth/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
     const cookieState = req.cookies.oauth_state;
-    if (!code || !state || state !== cookieState) {
+    const issuedAt = state ? stateStore.get(state) : undefined;
+    const stateExpired = typeof issuedAt === 'number' ? Date.now() - issuedAt > STATE_TTL : true;
+
+    if (!code || !state || state !== cookieState || !issuedAt || stateExpired) {
       return res.status(400).send('Invalid state or missing code');
     }
+
+    stateStore.delete(state);
+    res.clearCookie('oauth_state', { ...oauthCookieOptions, maxAge: undefined });
 
     const tokenUrl = new URL(`${GRAPH_BASE}/oauth/access_token`);
     tokenUrl.searchParams.set('client_id', APP_ID);

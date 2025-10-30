@@ -1,5 +1,10 @@
 # Repository Guidelines
 
+## Task Workflow
+- Review `task.md` at the start of every session to understand the next prioritized items.
+- Update `task.md` as work progresses, checking off completed tasks and adding notes when scope changes.
+- Do not mark a task complete until code, tests, and deployment steps (if any) are finished.
+
 ## Project Structure & Module Organization
 - `server.js` is the Express entry point; it loads `.env`, wires middleware, and serves assets from `public/`.
 - `public/` holds static client files (currently `index.html`) that drive the Instagram connect button flow.
