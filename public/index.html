@@ -1,34 +1,431 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Connect Instagram Demo</title>
+    <title>Instagram Connect Console</title>
+    <script>
+      window.tailwind = window.tailwind || {};
+      window.tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#fff4f1',
+                100: '#ffe7e1',
+                200: '#ffcdc4',
+                300: '#ffac9b',
+                400: '#ff8269',
+                500: '#ff5b40',
+                600: '#f74e32',
+                700: '#dd3619',
+                800: '#b02b14',
+                900: '#81230f',
+              },
+            },
+            fontFamily: {
+              display: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
+              body: ['"Inter"', 'ui-sans-serif', 'system-ui'],
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap"
+    />
     <style>
-      body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:720px;margin:40px auto;padding:0 16px}
-      button{font-size:16px;padding:12px 16px;border-radius:10px;border:1px solid #ddd;cursor:pointer}
-      .card{border:1px solid #eee;border-radius:12px;padding:16px;margin:16px 0}
-      code{background:#f6f6f6;padding:2px 6px;border-radius:6px}
+      :root {
+        color-scheme: light;
+      }
+      body {
+        font-family: 'Inter', ui-sans-serif, system-ui;
+      }
+      .grid-overlay {
+        background-image: radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.12) 1px, transparent 0);
+        background-size: 20px 20px;
+      }
     </style>
   </head>
-  <body>
-    <h1>Connect Instagram</h1>
-    <p>Click the button below to connect your Facebook Page + Instagram account.</p>
-    <button onclick="window.location.href='/login'">Connect Instagram</button>
+  <body class="relative min-h-screen bg-slate-50 text-slate-900">
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="grid-overlay absolute inset-0 opacity-40"></div>
+      <div class="absolute -left-32 top-10 h-64 w-64 rounded-full bg-brand-200 blur-3xl"></div>
+      <div class="absolute bottom-[-10rem] right-[-4rem] h-96 w-96 rounded-full bg-sky-200 blur-3xl"></div>
+    </div>
+    <main class="relative mx-auto flex max-w-6xl flex-col gap-10 px-4 pb-16 pt-12 sm:px-6 lg:px-8">
+      <header class="mx-auto max-w-3xl text-center">
+        <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-sm font-medium text-slate-600 shadow-sm">
+          <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+          Live demo environment
+        </div>
+        <h1 class="font-display text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
+          Seamlessly connect Instagram and manage your webhooks
+        </h1>
+        <p class="mt-4 text-lg text-slate-600">
+          Launch the Meta OAuth flow in a single tap, confirm the accounts you manage, and fine-tune webhook subscriptions without leaving this page.
+        </p>
+        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <button
+            id="connect-btn"
+            class="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            type="button"
+          >
+            Connect Instagram
+          </button>
+          <a
+            href="/privacy-policy"
+            class="inline-flex items-center gap-2 text-base font-medium text-slate-600 transition hover:text-slate-900"
+          >
+            <span>View privacy policy</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-5 w-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5H21m0 0v7.5M21 4.5l-9 9m-3-3H3m0 0v9m0-9l9 9"></path>
+            </svg>
+          </a>
+        </div>
+      </header>
 
-    <div id="result" class="card" style="display:none"></div>
+      <section class="grid gap-6 lg:grid-cols-5">
+        <div class="lg:col-span-3">
+          <div class="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl shadow-slate-900/5 backdrop-blur">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 class="text-xl font-semibold text-slate-900">Connection overview</h2>
+                <p class="mt-1 text-sm text-slate-500">Status updates the moment the OAuth flow completes.</p>
+              </div>
+              <span
+                id="status-pill"
+                class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-4 py-1 text-sm font-medium text-slate-600"
+              >
+                Disconnected
+              </span>
+            </div>
+            <dl class="mt-8 grid gap-4 md:grid-cols-2">
+              <div class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-sm">
+                <dt class="text-sm font-medium text-slate-500">Facebook Page</dt>
+                <dd class="mt-2 text-lg font-semibold text-slate-900" id="page-name">Not connected</dd>
+                <p class="mt-1 text-sm text-slate-500">
+                  ID:
+                  <code class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" id="page-id">—</code>
+                </p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-white/70 p-5 shadow-sm">
+                <dt class="text-sm font-medium text-slate-500">Instagram Account</dt>
+                <dd class="mt-2 text-lg font-semibold text-slate-900" id="ig-handle">Not linked</dd>
+                <p class="mt-1 text-sm text-slate-500">
+                  ID:
+                  <code class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600" id="ig-id">—</code>
+                </p>
+              </div>
+            </dl>
+            <div id="connection-hint" class="mt-6 rounded-2xl border border-dashed border-brand-200 bg-brand-50/80 px-5 py-4 text-sm text-brand-800">
+              Use the “Connect Instagram” button above to start the OAuth login and retrieve your business assets.
+            </div>
+          </div>
+        </div>
+        <div class="lg:col-span-2">
+          <div class="h-full rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-xl shadow-slate-900/5 backdrop-blur">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-xl font-semibold text-slate-900">Webhook subscriptions</h2>
+                <p class="mt-1 text-sm text-slate-500">Toggle the fields to receive the events you care about.</p>
+              </div>
+              <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-600">
+                Real-time
+              </span>
+            </div>
+            <div id="webhook-list" class="mt-6 space-y-3"></div>
+            <p id="webhook-hint" class="mt-6 hidden rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Connect an account first to enable webhook management.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid gap-6 lg:grid-cols-2">
+        <div class="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-lg shadow-slate-900/5 backdrop-blur">
+          <h3 class="text-lg font-semibold text-slate-900">How it works</h3>
+          <ol class="mt-4 space-y-4 text-sm text-slate-600">
+            <li class="flex gap-3">
+              <span class="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">1</span>
+              Kick off the Meta OAuth dialog and choose the Facebook Page that owns your Instagram account.
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">2</span>
+              We store the resulting page and Instagram IDs securely on the server for this demo session.
+            </li>
+            <li class="flex gap-3">
+              <span class="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">3</span>
+              Subscribe to webhook fields to stream mentions, comments, and direct messages back to your app instantly.
+            </li>
+          </ol>
+        </div>
+        <div class="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-lg shadow-slate-900/5 backdrop-blur">
+          <h3 class="text-lg font-semibold text-slate-900">Webhook delivery log</h3>
+          <p class="mt-2 text-sm text-slate-600">
+            In a real integration, delivered payloads would appear here. Tailor the experience by subscribing to the exact fields you need and storing them in your own persistence layer.
+          </p>
+          <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-100/70 p-4 text-xs font-mono text-slate-600">
+            <p class="text-slate-500">Sample payload</p>
+            <pre class="mt-2 whitespace-pre-wrap text-slate-700">{
+  "object": "instagram",
+  "field": "messages",
+  "changes": [
+    { "from": "@samplebusiness", "message": "New DM received" }
+  ]
+}</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div
+      id="feedback"
+      class="pointer-events-none fixed inset-x-4 bottom-6 z-50 flex justify-center opacity-0 transition-all duration-300 ease-out sm:inset-auto sm:right-6 sm:w-auto"
+    >
+      <div
+        id="feedback-inner"
+        class="pointer-events-auto flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-xl shadow-emerald-500/30"
+      >
+        <span id="feedback-icon">✓</span>
+        <span id="feedback-text">Connected successfully</span>
+        <button
+          id="feedback-dismiss"
+          class="rounded-full bg-white/20 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-white/80 transition hover:bg-white/30"
+          type="button"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+
     <script>
-      // After callback, the server may redirect to /?status=ok
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('status') === 'ok') {
-        fetch('/whoami').then(r=>r.json()).then(data=>{
-          const box = document.getElementById('result');
-          box.style.display='block';
-          box.innerHTML = `<h3>Connected ✅</h3>
-            <p><b>Page:</b> ${data.page?.name} (ID: <code>${data.page?.id}</code>)</p>
-            <p><b>Instagram:</b> ${data.instagram?.username || 'not linked'} (ID: <code>${data.instagram?.id || '—'}</code>)</p>`;
+      const AVAILABLE_WEBHOOKS = [
+        {
+          id: 'messages',
+          title: 'Direct messages',
+          description: 'Receive DMs sent to your Instagram business inbox in real time.',
+        },
+        {
+          id: 'comments',
+          title: 'Post comments',
+          description: 'Track comments on organic and promoted posts as they happen.',
+        },
+        {
+          id: 'mentions',
+          title: 'Mentions & tags',
+          description: 'Get alerted when someone @mentions your handle in stories or captions.',
+        },
+        {
+          id: 'story_insights',
+          title: 'Story insights',
+          description: 'Collect analytics for story interactions and retention.',
+        },
+      ];
+
+      const connectBtn = document.getElementById('connect-btn');
+      const statusPill = document.getElementById('status-pill');
+      const pageName = document.getElementById('page-name');
+      const pageId = document.getElementById('page-id');
+      const igHandle = document.getElementById('ig-handle');
+      const igId = document.getElementById('ig-id');
+      const connectionHint = document.getElementById('connection-hint');
+      const webhookList = document.getElementById('webhook-list');
+      const webhookHint = document.getElementById('webhook-hint');
+      const feedback = document.getElementById('feedback');
+      const feedbackInner = document.getElementById('feedback-inner');
+      const feedbackText = document.getElementById('feedback-text');
+      const feedbackIcon = document.getElementById('feedback-icon');
+      const feedbackDismiss = document.getElementById('feedback-dismiss');
+
+      let hideFeedbackTimeout = null;
+      let cachedStatus = { connected: false, webhooks: [] };
+
+      function showFeedback(message, variant = 'success') {
+        const styles = {
+          success: 'bg-emerald-500 text-white shadow-emerald-500/30',
+          error: 'bg-red-500 text-white shadow-red-500/30',
+          info: 'bg-slate-900 text-white shadow-slate-900/20',
+        };
+        const iconMap = { success: '✓', error: '⚠️', info: 'ℹ️' };
+
+        feedbackInner.className = `pointer-events-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium shadow-xl transition ${
+          styles[variant] || styles.success
+        }`;
+        feedbackIcon.textContent = iconMap[variant] || iconMap.success;
+        feedbackText.textContent = message;
+        feedback.classList.remove('opacity-0', 'translate-y-4');
+        feedback.classList.add('opacity-100');
+
+        clearTimeout(hideFeedbackTimeout);
+        hideFeedbackTimeout = setTimeout(hideFeedback, 4000);
+      }
+
+      function hideFeedback() {
+        feedback.classList.remove('opacity-100');
+        feedback.classList.add('opacity-0');
+      }
+
+      feedbackDismiss.addEventListener('click', () => {
+        hideFeedback();
+        clearTimeout(hideFeedbackTimeout);
+      });
+
+      connectBtn.addEventListener('click', () => {
+        window.location.href = '/login';
+      });
+
+      function renderWebhookItems(status) {
+        webhookList.innerHTML = '';
+        const activeFields = new Set(status.webhooks || []);
+
+        AVAILABLE_WEBHOOKS.forEach((hook) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm transition sm:flex-row sm:items-center sm:justify-between';
+
+          const textBlock = document.createElement('div');
+          const title = document.createElement('h3');
+          title.className = 'text-base font-semibold text-slate-900';
+          title.textContent = hook.title;
+
+          const description = document.createElement('p');
+          description.className = 'mt-1 text-sm text-slate-500';
+          description.textContent = hook.description;
+          textBlock.appendChild(title);
+          textBlock.appendChild(description);
+
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.field = hook.id;
+          button.className = 'inline-flex items-center justify-center rounded-full border px-5 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+
+          const isActive = activeFields.has(hook.id);
+
+          if (isActive) {
+            button.textContent = 'Subscribed';
+            button.classList.add('border-transparent', 'bg-brand-600', 'text-white', 'hover:bg-brand-700', 'focus-visible:outline-brand-600');
+          } else {
+            button.textContent = 'Subscribe';
+            button.classList.add('border-slate-200', 'bg-white', 'text-slate-700', 'hover:border-slate-300', 'hover:text-slate-900', 'focus-visible:outline-slate-900');
+          }
+
+          button.addEventListener('click', () => {
+            if (!cachedStatus.connected) {
+              showFeedback('Connect your account first to manage webhooks.', 'info');
+              return;
+            }
+            button.disabled = true;
+            button.classList.add('opacity-60');
+            const action = isActive ? unsubscribeWebhook(hook.id) : subscribeWebhook(hook.id);
+            action
+              .catch((err) => {
+                console.error(err);
+                showFeedback(err.message || 'Unable to update webhook.', 'error');
+              })
+              .finally(() => {
+                button.disabled = false;
+                button.classList.remove('opacity-60');
+              });
+          });
+
+          wrapper.appendChild(textBlock);
+          wrapper.appendChild(button);
+          webhookList.appendChild(wrapper);
         });
       }
+
+      async function subscribeWebhook(field) {
+        const response = await fetch('/api/webhooks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ field }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || 'Failed to subscribe.');
+        }
+
+        showFeedback(`Subscribed to ${field} updates.`, 'success');
+        await refreshStatus();
+      }
+
+      async function unsubscribeWebhook(field) {
+        const response = await fetch(`/api/webhooks/${encodeURIComponent(field)}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.error || 'Failed to unsubscribe.');
+        }
+
+        showFeedback(`Unsubscribed from ${field} updates.`, 'info');
+        await refreshStatus();
+      }
+
+      function updateConnectionSection(status) {
+        cachedStatus = status;
+        const connected = Boolean(status.connected);
+
+        if (connected) {
+          statusPill.textContent = 'Connected';
+          statusPill.className = 'inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1 text-sm font-medium text-emerald-700';
+          connectionHint.classList.add('hidden');
+        } else {
+          statusPill.textContent = 'Disconnected';
+          statusPill.className = 'inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-100 px-4 py-1 text-sm font-medium text-slate-600';
+          connectionHint.classList.remove('hidden');
+        }
+
+        if (status.page) {
+          pageName.textContent = status.page.name || '—';
+          pageId.textContent = status.page.id || '—';
+        } else {
+          pageName.textContent = 'Not connected';
+          pageId.textContent = '—';
+        }
+
+        if (status.instagram) {
+          igHandle.textContent = status.instagram.username ? `@${status.instagram.username}` : '—';
+          igId.textContent = status.instagram.id || '—';
+        } else {
+          igHandle.textContent = 'Not linked';
+          igId.textContent = '—';
+        }
+
+        if (connected) {
+          connectBtn.textContent = 'Reconnect account';
+        } else {
+          connectBtn.textContent = 'Connect Instagram';
+        }
+
+        webhookHint.classList.toggle('hidden', connected);
+        renderWebhookItems(status);
+      }
+
+      async function refreshStatus() {
+        try {
+          const response = await fetch('/api/status');
+          if (!response.ok) {
+            throw new Error('Unable to fetch status.');
+          }
+          const data = await response.json();
+          updateConnectionSection(data);
+        } catch (error) {
+          console.error(error);
+          showFeedback('Unable to load current status.', 'error');
+        }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('status') === 'ok') {
+        showFeedback('Instagram connected successfully.', 'success');
+      }
+
+      refreshStatus();
     </script>
   </body>
 </html>

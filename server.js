@@ -30,6 +30,7 @@ const store = {
   userToken: null,
   selectedPage: null,
   instagram: null,
+  webhookFields: new Set(),
 };
 
 const OAUTH_BASE = 'https://www.facebook.com/v20.0/dialog/oauth';
@@ -134,6 +135,8 @@ app.get('/oauth/callback', async (req, res) => {
       throw new Error(`Subscribing app failed: ${JSON.stringify(subJson)}`);
     }
 
+    store.webhookFields.add('messages');
+
     res.redirect('/?status=ok');
   } catch (err) {
     console.error(err);
@@ -141,8 +144,87 @@ app.get('/oauth/callback', async (req, res) => {
   }
 });
 
+function serializeStatus() {
+  return {
+    connected: Boolean(store.selectedPage),
+    page: store.selectedPage,
+    instagram: store.instagram,
+    webhooks: Array.from(store.webhookFields),
+  };
+}
+
 app.get('/whoami', (_req, res) => {
-  res.json({ page: store.selectedPage, instagram: store.instagram });
+  res.json(serializeStatus());
+});
+
+app.get('/api/status', (_req, res) => {
+  res.json(serializeStatus());
+});
+
+async function mutateWebhookSubscription(method, field) {
+  const page = store.selectedPage;
+  if (!page || !page.access_token) {
+    throw new Error('Connect a page with a valid access token before managing webhooks.');
+  }
+
+  const url = new URL(`${GRAPH_BASE}/${page.id}/subscribed_apps`);
+  url.searchParams.set('subscribed_fields', field);
+
+  const response = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${page.access_token}` },
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (err) {
+    // Some Graph responses are empty on success; ignore JSON parse errors then.
+    payload = null;
+  }
+
+  if (!response.ok) {
+    const message = payload?.error?.message || JSON.stringify(payload) || 'Unknown error';
+    throw new Error(message);
+  }
+
+  return payload;
+}
+
+app.get('/api/webhooks', (_req, res) => {
+  res.json({ webhooks: Array.from(store.webhookFields) });
+});
+
+app.post('/api/webhooks', async (req, res) => {
+  const field = (req.body?.field || '').trim();
+  if (!field) {
+    return res.status(400).json({ error: 'Webhook field is required.' });
+  }
+
+  try {
+    await mutateWebhookSubscription('POST', field);
+    store.webhookFields.add(field);
+    res.json({ field, status: 'subscribed' });
+  } catch (err) {
+    console.error('Failed to subscribe to webhook', err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.delete('/api/webhooks/:field', async (req, res) => {
+  const field = (req.params.field || '').trim();
+  if (!field) {
+    return res.status(400).json({ error: 'Webhook field is required.' });
+  }
+
+  try {
+    await mutateWebhookSubscription('DELETE', field);
+    store.webhookFields.delete(field);
+    res.json({ field, status: 'unsubscribed' });
+  } catch (err) {
+    console.error('Failed to unsubscribe from webhook', err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 app.get('/privacy-policy', (_req, res) => {
