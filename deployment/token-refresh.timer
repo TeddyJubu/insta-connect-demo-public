@@ -1,0 +1,15 @@
+[Unit]
+Description=Instagram Connect Demo - Token Refresh Timer
+Requires=token-refresh-oneshot.service
+
+[Timer]
+# Run daily at 2:00 AM UTC
+OnCalendar=*-*-* 02:00:00
+# Run 5 minutes after boot if we missed the scheduled time
+OnBootSec=5min
+# Ensure timer persists across reboots
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

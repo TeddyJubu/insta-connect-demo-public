@@ -20,14 +20,20 @@
   - Notes: `server.js` now issues short-lived state tokens, enforces secure cookies in production (with `sameSite=lax` for OAuth compatibility), and rejects stale/nonexistent state.
 
 ### Stage 2 – Persistence & Sessions
-- [ ] Introduce persistent storage (Postgres or DynamoDB) for user profiles, pages, tokens, and webhook preferences
-- [ ] Implement application authentication (e.g., email login or Auth0) and map Meta assets to user accounts
-- [ ] Build token refresh jobs to renew long-lived Meta tokens before expiry and log refresh outcomes
+- [x] Introduce persistent storage (Postgres or DynamoDB) for user profiles, pages, tokens, and webhook preferences
+  - Notes: PostgreSQL database with 8 tables (users, meta_accounts, pages, instagram_accounts, webhook_subscriptions, webhook_events, token_refresh_log, sessions); complete models and migration scripts created.
+- [x] Implement application authentication (e.g., email login or Auth0) and map Meta assets to user accounts
+  - Notes: Email/password authentication with bcrypt; session management with PostgreSQL-backed sessions; authentication middleware (requireAuth, optionalAuth); routes for register, login, logout.
+- [x] Build token refresh jobs to renew long-lived Meta tokens before expiry and log refresh outcomes
+  - Notes: Token refresh script with Meta API integration; node-cron scheduler; systemd service files; refreshes tokens expiring within 7 days; logs all attempts to token_refresh_log table.
 
 ### Stage 3 – Webhook Handling
-- [ ] Implement signature validation and queueing for `/webhook` receiver
-- [ ] Persist webhook deliveries with retry/backoff logic and dead-letter handling
-- [ ] Expose a dashboard/history view for webhook events with filtering and manual replay
+- [x] Implement signature validation and queueing for `/webhook` receiver
+  - Notes: HMAC SHA256 signature validation middleware; timing-safe comparison; raw body capture; immediate 200 response with async queueing to database.
+- [x] Persist webhook deliveries with retry/backoff logic and dead-letter handling
+  - Notes: WebhookEvent model with full CRUD; retry logic with exponential backoff (1s, 5s, 30s); max 3 retries before dead-letter queue; webhook processor job with node-cron scheduler.
+- [x] Expose a dashboard/history view for webhook events with filtering and manual replay
+  - Notes: Webhook dashboard API routes; web UI with statistics cards, event list, status filter, event details modal, manual retry; auto-refresh every 10 seconds; comprehensive documentation in docs/WEBHOOK_SYSTEM.md.
 
 ### Stage 4 – Frontend & User Experience
 - [ ] Migrate static HTML to a framework (React/Next.js) with shared auth state

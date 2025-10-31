@@ -1,0 +1,24 @@
+[Unit]
+Description=Instagram Connect Demo - Token Refresh Job Scheduler
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/insta-connect-demo
+ExecStart=/usr/bin/node src/jobs/scheduler.js
+Restart=always
+RestartSec=10
+
+# Environment
+Environment=NODE_ENV=production
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=insta-token-refresh
+
+[Install]
+WantedBy=multi-user.target
+

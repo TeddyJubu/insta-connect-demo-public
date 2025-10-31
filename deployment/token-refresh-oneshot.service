@@ -1,0 +1,22 @@
+[Unit]
+Description=Instagram Connect Demo - Token Refresh One-Shot Job
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/insta-connect-demo
+ExecStart=/usr/bin/node src/jobs/refresh-tokens.js
+
+# Environment
+Environment=NODE_ENV=production
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=insta-token-refresh
+
+[Install]
+WantedBy=multi-user.target
+

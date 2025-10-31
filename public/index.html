@@ -56,6 +56,27 @@
       <div class="absolute bottom-[-10rem] right-[-4rem] h-96 w-96 rounded-full bg-sky-200 blur-3xl"></div>
     </div>
     <main class="relative mx-auto flex max-w-6xl flex-col gap-10 px-4 pb-16 pt-12 sm:px-6 lg:px-8">
+      <!-- User info bar -->
+      <div class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white/80 px-6 py-3 shadow-sm backdrop-blur">
+        <div class="flex items-center gap-3">
+          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-sm font-semibold text-white">
+            <span id="user-initial">U</span>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-900" id="user-email">Loading...</p>
+            <p class="text-xs text-slate-500">Logged in</p>
+          </div>
+        </div>
+        <form method="POST" action="/auth/logout">
+          <button
+            type="submit"
+            class="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+          >
+            Log out
+          </button>
+        </form>
+      </div>
+
       <header class="mx-auto max-w-3xl text-center">
         <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-sm font-medium text-slate-600 shadow-sm">
           <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
@@ -154,19 +175,65 @@
           </ol>
         </div>
         <div class="rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-lg shadow-slate-900/5 backdrop-blur">
-          <h3 class="text-lg font-semibold text-slate-900">Webhook delivery log</h3>
-          <p class="mt-2 text-sm text-slate-600">
-            In a real integration, delivered payloads would appear here. Tailor the experience by subscribing to the exact fields you need and storing them in your own persistence layer.
-          </p>
-          <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-100/70 p-4 text-xs font-mono text-slate-600">
-            <p class="text-slate-500">Sample payload</p>
-            <pre class="mt-2 whitespace-pre-wrap text-slate-700">{
-  "object": "instagram",
-  "field": "messages",
-  "changes": [
-    { "from": "@samplebusiness", "message": "New DM received" }
-  ]
-}</pre>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-slate-900">Webhook Events</h3>
+            <div class="flex gap-2">
+              <select id="statusFilter" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="processed">Processed</option>
+                <option value="failed">Failed</option>
+                <option value="dead_letter">Dead Letter</option>
+              </select>
+              <button id="refreshEvents" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-slate-50">
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <!-- Statistics -->
+          <div id="webhookStats" class="mt-4 grid grid-cols-5 gap-3">
+            <div class="rounded-lg bg-slate-100 p-3 text-center">
+              <div class="text-xs text-slate-600">Total</div>
+              <div class="text-lg font-semibold text-slate-900" id="stat-total">0</div>
+            </div>
+            <div class="rounded-lg bg-blue-100 p-3 text-center">
+              <div class="text-xs text-blue-600">Pending</div>
+              <div class="text-lg font-semibold text-blue-900" id="stat-pending">0</div>
+            </div>
+            <div class="rounded-lg bg-green-100 p-3 text-center">
+              <div class="text-xs text-green-600">Processed</div>
+              <div class="text-lg font-semibold text-green-900" id="stat-processed">0</div>
+            </div>
+            <div class="rounded-lg bg-red-100 p-3 text-center">
+              <div class="text-xs text-red-600">Failed</div>
+              <div class="text-lg font-semibold text-red-900" id="stat-failed">0</div>
+            </div>
+            <div class="rounded-lg bg-purple-100 p-3 text-center">
+              <div class="text-xs text-purple-600">Dead Letter</div>
+              <div class="text-lg font-semibold text-purple-900" id="stat-dead_letter">0</div>
+            </div>
+          </div>
+
+          <!-- Events List -->
+          <div id="webhookEvents" class="mt-4 space-y-2">
+            <p class="text-sm text-slate-500 text-center py-8">No webhook events yet</p>
+          </div>
+
+          <!-- Event Detail Modal -->
+          <div id="eventModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-lg font-semibold">Event Details</h4>
+                <button id="closeModal" class="text-slate-400 hover:text-slate-600">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div id="eventDetails"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -451,12 +518,212 @@
         }
       }
 
+      async function loadUserInfo() {
+        try {
+          const response = await fetch('/auth/status');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.authenticated && data.email) {
+              const userEmail = document.getElementById('user-email');
+              const userInitial = document.getElementById('user-initial');
+              userEmail.textContent = data.email;
+              userInitial.textContent = data.email.charAt(0).toUpperCase();
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load user info:', error);
+        }
+      }
+
       const params = new URLSearchParams(window.location.search);
       if (params.get('status') === 'ok') {
         showFeedback('Instagram connected successfully.', 'success');
       }
 
+      loadUserInfo();
       refreshStatus();
+
+      // Webhook Dashboard Functions
+      async function loadWebhookStats() {
+        try {
+          const response = await fetch('/api/webhook-events/stats');
+          if (!response.ok) return;
+
+          const stats = await response.json();
+          document.getElementById('stat-total').textContent = stats.total || 0;
+          document.getElementById('stat-pending').textContent = stats.pending || 0;
+          document.getElementById('stat-processed').textContent = stats.processed || 0;
+          document.getElementById('stat-failed').textContent = stats.failed || 0;
+          document.getElementById('stat-dead_letter').textContent = stats.dead_letter || 0;
+        } catch (error) {
+          console.error('Failed to load webhook stats:', error);
+        }
+      }
+
+      async function loadWebhookEvents() {
+        try {
+          const status = document.getElementById('statusFilter').value;
+          const params = new URLSearchParams();
+          if (status) params.set('status', status);
+          params.set('limit', '20');
+
+          const response = await fetch(`/api/webhook-events?${params}`);
+          if (!response.ok) return;
+
+          const data = await response.json();
+          const container = document.getElementById('webhookEvents');
+
+          if (data.events.length === 0) {
+            container.innerHTML = '<p class="text-sm text-slate-500 text-center py-8">No webhook events found</p>';
+            return;
+          }
+
+          container.innerHTML = data.events.map(event => {
+            const statusColors = {
+              pending: 'bg-blue-100 text-blue-700',
+              processing: 'bg-yellow-100 text-yellow-700',
+              processed: 'bg-green-100 text-green-700',
+              failed: 'bg-red-100 text-red-700',
+              dead_letter: 'bg-purple-100 text-purple-700'
+            };
+
+            const statusColor = statusColors[event.status] || 'bg-slate-100 text-slate-700';
+            const receivedAt = new Date(event.received_at).toLocaleString();
+
+            return `
+              <div class="rounded-lg border border-slate-200 bg-white p-4 hover:border-slate-300 cursor-pointer" onclick="showEventDetails(${event.id})">
+                <div class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <span class="text-sm font-medium text-slate-900">Event #${event.id}</span>
+                      <span class="text-xs px-2 py-0.5 rounded-full ${statusColor}">${event.status}</span>
+                      ${event.retry_count > 0 ? `<span class="text-xs text-slate-500">Retry ${event.retry_count}</span>` : ''}
+                    </div>
+                    <div class="mt-1 text-xs text-slate-600">
+                      Type: ${event.event_type || 'unknown'} • ${receivedAt}
+                    </div>
+                  </div>
+                  ${event.status === 'failed' || event.status === 'dead_letter' ? `
+                    <button onclick="retryEvent(${event.id}, event)" class="ml-2 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 border border-blue-300 rounded-lg hover:bg-blue-50">
+                      Retry
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } catch (error) {
+          console.error('Failed to load webhook events:', error);
+        }
+      }
+
+      async function showEventDetails(eventId) {
+        try {
+          const response = await fetch(`/api/webhook-events/${eventId}`);
+          if (!response.ok) return;
+
+          const event = await response.json();
+          const modal = document.getElementById('eventModal');
+          const details = document.getElementById('eventDetails');
+
+          const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
+
+          details.innerHTML = `
+            <div class="space-y-4">
+              <div>
+                <div class="text-sm font-medium text-slate-700">Event ID</div>
+                <div class="text-sm text-slate-900">${event.id}</div>
+              </div>
+              <div>
+                <div class="text-sm font-medium text-slate-700">Status</div>
+                <div class="text-sm text-slate-900">${event.status}</div>
+              </div>
+              <div>
+                <div class="text-sm font-medium text-slate-700">Event Type</div>
+                <div class="text-sm text-slate-900">${event.event_type || 'unknown'}</div>
+              </div>
+              <div>
+                <div class="text-sm font-medium text-slate-700">Received At</div>
+                <div class="text-sm text-slate-900">${new Date(event.received_at).toLocaleString()}</div>
+              </div>
+              ${event.processed_at ? `
+                <div>
+                  <div class="text-sm font-medium text-slate-700">Processed At</div>
+                  <div class="text-sm text-slate-900">${new Date(event.processed_at).toLocaleString()}</div>
+                </div>
+              ` : ''}
+              ${event.retry_count > 0 ? `
+                <div>
+                  <div class="text-sm font-medium text-slate-700">Retry Count</div>
+                  <div class="text-sm text-slate-900">${event.retry_count}</div>
+                </div>
+              ` : ''}
+              ${event.last_error ? `
+                <div>
+                  <div class="text-sm font-medium text-red-700">Last Error</div>
+                  <div class="text-sm text-red-900 bg-red-50 p-2 rounded">${event.last_error}</div>
+                </div>
+              ` : ''}
+              <div>
+                <div class="text-sm font-medium text-slate-700 mb-2">Payload</div>
+                <pre class="text-xs bg-slate-100 p-3 rounded-lg overflow-x-auto">${JSON.stringify(payload, null, 2)}</pre>
+              </div>
+            </div>
+          `;
+
+          modal.classList.remove('hidden');
+        } catch (error) {
+          console.error('Failed to load event details:', error);
+        }
+      }
+
+      async function retryEvent(eventId, e) {
+        e.stopPropagation();
+
+        if (!confirm('Retry this event?')) return;
+
+        try {
+          const response = await fetch(`/api/webhook-events/${eventId}/retry`, {
+            method: 'POST'
+          });
+
+          if (response.ok) {
+            showFeedback('Event queued for retry', 'success');
+            loadWebhookEvents();
+            loadWebhookStats();
+          } else {
+            showFeedback('Failed to retry event', 'error');
+          }
+        } catch (error) {
+          console.error('Failed to retry event:', error);
+          showFeedback('Failed to retry event', 'error');
+        }
+      }
+
+      // Event listeners
+      document.getElementById('statusFilter').addEventListener('change', loadWebhookEvents);
+      document.getElementById('refreshEvents').addEventListener('click', () => {
+        loadWebhookEvents();
+        loadWebhookStats();
+      });
+      document.getElementById('closeModal').addEventListener('click', () => {
+        document.getElementById('eventModal').classList.add('hidden');
+      });
+      document.getElementById('eventModal').addEventListener('click', (e) => {
+        if (e.target.id === 'eventModal') {
+          document.getElementById('eventModal').classList.add('hidden');
+        }
+      });
+
+      // Load webhook data
+      loadWebhookStats();
+      loadWebhookEvents();
+
+      // Refresh webhook data every 10 seconds
+      setInterval(() => {
+        loadWebhookStats();
+        loadWebhookEvents();
+      }, 10000);
     </script>
   </body>
 </html>
