@@ -1,58 +1,74 @@
-# Production Readiness Task Board
+# Task List
 
-> Always update this file after each work session. Track progress by checking off completed items and adding notes/dates as needed.
+## Current Sprint: HTTPS Setup & Deployment
 
-## Stage 1 – Security & Secrets
-- [ ] Move environment secrets into a managed secret store (e.g., AWS SSM, Doppler) and remove plaintext `.env` from the server
-  - Notes: Playbook drafted in `docs/SECRET_MANAGEMENT.md`; awaiting platform selection and migration.
-- [ ] Rotate `APP_SECRET`, `OAUTH_STATE_SECRET`, and `VERIFY_TOKEN`; document rotation procedure
-  - Notes: Rotation steps documented in `docs/SECRET_MANAGEMENT.md`; scheduling pending.
-- [ ] Enforce HTTPS for `insta.tiblings.com` with automatic certificate renewal and HTTP→HTTPS redirects
-  - Notes: Application-level redirect available via `ENFORCE_HTTPS=true`; infrastructure cert automation still required.
-- [x] Harden cookies (secure, `httpOnly`, strict state validation) and add CSRF/state nonce protections
-  - Notes: `server.js` now issues short-lived state tokens, enforces secure cookies in production (with `sameSite=lax` for OAuth compatibility), and rejects stale/nonexistent state.
+### ✅ Completed Tasks
+- [x] Initial project setup with Express server
+- [x] Basic OAuth flow implementation
+- [x] Environment variables configuration with Doppler
+- [x] Deployment to Hostinger VPS (147.93.112.223)
+- [x] DNS configuration (insta.tiblings.com → 147.93.112.223)
 
-## Stage 2 – Persistence & Sessions
-- [ ] Introduce persistent storage (Postgres or DynamoDB) for user profiles, pages, tokens, and webhook preferences
-- [ ] Implement application authentication (e.g., email login or Auth0) and map Meta assets to user accounts
-- [ ] Build token refresh jobs to renew long-lived Meta tokens before expiry and log refresh outcomes
+### 🔄 In Progress
 
-## Stage 3 – Webhook Handling
-- [ ] Implement signature validation and queueing for `/webhook` receiver
-- [ ] Persist webhook deliveries with retry/backoff logic and dead-letter handling
-- [ ] Expose a dashboard/history view for webhook events with filtering and manual replay
+#### HTTPS Configuration
+- [ ] Install Nginx and Certbot on VPS
+  - [ ] SSH into server (root@147.93.112.223)
+  - [ ] Run `sudo apt update`
+  - [ ] Install packages: `sudo apt install nginx certbot python3-certbot-nginx -y`
+  - [ ] Verify Nginx is running: `sudo systemctl status nginx`
 
-## Stage 4 – Frontend & User Experience
-- [ ] Migrate static HTML to a framework (React/Next.js) with shared auth state
-- [ ] Improve error/empty-state messaging (e.g., guidance when no pages are found)
-- [ ] Add guided onboarding and contextual help for connecting assets
-- [ ] Localize strings and support multi-language copy (optional stretch)
+- [ ] Configure Nginx as reverse proxy
+  - [ ] Create site config: `/etc/nginx/sites-available/insta-connect-demo`
+  - [ ] Add proxy_pass configuration to forward traffic to localhost:3000
+  - [ ] Enable site: symlink to `/etc/nginx/sites-enabled/`
+  - [ ] Test config: `sudo nginx -t`
+  - [ ] Reload Nginx: `sudo systemctl reload nginx`
 
-## Stage 5 – Graph API Reliability
-- [ ] Wrap Graph API calls with retry, timeout, and rate-limit handling
-- [ ] Surface actionable error messages and prompt for re-consent when scopes are missing
-- [ ] Capture structured request/response logs (excluding secrets) for debugging
+- [ ] Obtain SSL certificate with Let's Encrypt
+  - [ ] Run Certbot: `sudo certbot --nginx -d insta.tiblings.com`
+  - [ ] Provide email for renewal notices
+  - [ ] Accept terms and conditions
+  - [ ] Choose option 2 to redirect HTTP → HTTPS
+  - [ ] Verify HTTPS works in browser (lock icon visible)
+  - [ ] Test auto-renewal: `sudo certbot renew --dry-run`
 
-## Stage 6 – Infrastructure & Deployments
-- [ ] Containerize the app with Docker and define health checks/resource limits
-- [ ] Set up CI/CD (GitHub Actions) to lint, test, build, and deploy to cloud automatically
-- [ ] Deploy to a managed runtime (ECS/Fargate, GKE, or similar) behind a load balancer/CDN
-- [ ] Implement blue/green or canary deployments for zero-downtime releases
+- [ ] Update application environment variables
+  - [ ] Set `ENFORCE_HTTPS=true` in Doppler
+  - [ ] Set `NODE_ENV=production` in Doppler
+  - [ ] Set `COOKIE_DOMAIN=insta.tiblings.com` in Doppler
+  - [ ] Restart service: `sudo systemctl restart insta-connect-demo`
+  - [ ] Verify service status: `sudo systemctl status insta-connect-demo`
 
-## Stage 7 – Testing & Quality
-- [ ] Add Jest + Supertest coverage for all Express routes and OAuth branches
-- [ ] Mock Graph API with nock (or equivalent) for deterministic tests
-- [ ] Add Playwright/Cypress end-to-end flows covering login + dashboard scenarios
-- [ ] Enforce ESLint + Prettier with pre-commit hooks and CI checks
+- [ ] Final verification
+  - [ ] Test HTTPS access: https://insta.tiblings.com
+  - [ ] Verify HTTP redirects to HTTPS
+  - [ ] Check browser console for mixed-content warnings
+  - [ ] Review server logs: `sudo journalctl -u insta-connect-demo -n 100`
+  - [ ] Test Instagram OAuth flow end-to-end on HTTPS
 
-## Stage 8 – Observability & Operations
-- [ ] Integrate structured logging (pino/winston) with request IDs and ship to centralized logging
-- [ ] Instrument metrics/tracing (OpenTelemetry → Datadog/Prometheus) and create dashboards
-- [ ] Configure alerts for token refresh failures, webhook errors, and elevated latency
-- [ ] Document operational runbooks and disaster recovery steps (backups, restores)
+### 📋 Upcoming Tasks
+- [ ] Add comprehensive test suite (Jest + Supertest)
+- [ ] Implement token refresh logic
+- [ ] Add error handling and logging middleware
+- [ ] Set up monitoring and alerting
+- [ ] Document deployment procedures
+- [ ] Add health check endpoint
 
-## Stage 9 – Compliance & Documentation
-- [ ] Publish production-ready privacy policy and terms of service
-- [ ] Document data retention/deletion policies and user consent workflows
-- [ ] Maintain infrastructure diagrams and onboarding docs for new team members
-- [ ] Ensure ongoing Meta App Review compliance and track renewal requirements
+### 📝 Notes
+- VPS IP: 147.93.112.223
+- Domain: insta.tiblings.com
+- Node app runs on port 3000 (internal)
+- Nginx will handle port 80/443 (external)
+- Certificates auto-renew via Certbot cron job
+- All secrets managed via Doppler (project: insta-connect-demo, config: dev_insta)
+
+### ⚠️ Blockers & Issues
+None currently
+
+### 🔒 Security Checklist
+- [ ] Verify `.env` is in `.gitignore`
+- [ ] Confirm all secrets are in Doppler, not committed to repo
+- [ ] Review Nginx security headers
+- [ ] Run `npm audit` and address high-severity issues
+- [ ] Rotate OAUTH_STATE_SECRET if it was ever exposed
