@@ -1,0 +1,236 @@
+{
+  "name": "Instagram AI Message Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "instagram-message",
+        "responseMode": "onReceived",
+        "responseCode": 200,
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "instagram-message"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate incoming webhook data\nconst webhookData = $input.item.json.body;\n\n// Validate required fields\nif (!webhookData) {\n  throw new Error('No webhook data received');\n}\n\nif (!webhookData.messageId || !webhookData.senderId || !webhookData.recipientId) {\n  throw new Error('Missing required fields: messageId, senderId, or recipientId');\n}\n\nif (!webhookData.messageText) {\n  throw new Error('No message text provided');\n}\n\nif (!webhookData.callbackUrl || !webhookData.callbackSecret) {\n  throw new Error('Missing callback configuration');\n}\n\n// Extract and prepare data\nconst messageData = {\n  messageId: webhookData.messageId,\n  senderId: webhookData.senderId,\n  recipientId: webhookData.recipientId,\n  messageText: webhookData.messageText,\n  timestamp: webhookData.timestamp || new Date().toISOString(),\n  callbackUrl: webhookData.callbackUrl,\n  callbackSecret: webhookData.callbackSecret\n};\n\n// Log for debugging\nconsole.log('Processing Instagram message:', {\n  messageId: messageData.messageId,\n  senderId: messageData.senderId,\n  textLength: messageData.messageText.length\n});\n\nreturn {\n  json: messageData\n};"
+      },
+      "id": "extract-data",
+      "name": "Extract Message Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "systemMessage": "You are a helpful Instagram business assistant. Your role is to respond to customer inquiries professionally and concisely.\n\nGuidelines:\n- Keep responses under 500 characters\n- Be friendly and professional\n- Provide helpful and accurate information\n- If you don't know something, be honest\n- Use emojis sparingly and appropriately\n- Never share personal or sensitive information\n\nRespond directly to the customer's message with a helpful answer."
+        },
+        "messages": {
+          "values": [
+            {
+              "message": "={{ $json.messageText }}"
+            }
+          ]
+        }
+      },
+      "id": "openai-chat",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Extract Message Data').item.json.callbackUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Secret",
+              "value": "={{ $('Extract Message Data').item.json.callbackSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        },
+        "jsonBody": "={\n  \"messageId\": \"{{ $('Extract Message Data').item.json.messageId }}\",\n  \"senderId\": \"{{ $('Extract Message Data').item.json.senderId }}\",\n  \"recipientId\": \"{{ $('Extract Message Data').item.json.recipientId }}\",\n  \"aiResponse\": \"{{ $json.text }}\",\n  \"status\": \"success\",\n  \"n8nExecutionId\": \"{{ $execution.id }}\",\n  \"timestamp\": \"{{ $now.toISO() }}\"\n}"
+      },
+      "id": "send-callback",
+      "name": "Send Success Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "errorWorkflows": "={{ $workflow.id }}"
+      },
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [250, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract error information\nconst error = $input.item.json.error;\nconst node = $input.item.json.node;\n\n// Try to get message data from previous execution\nlet messageId = 'unknown';\nlet senderId = 'unknown';\nlet recipientId = 'unknown';\nlet callbackUrl = null;\nlet callbackSecret = null;\n\n// Try to extract from the workflow execution data\ntry {\n  const extractNode = $('Extract Message Data');\n  if (extractNode && extractNode.item && extractNode.item.json) {\n    messageId = extractNode.item.json.messageId || messageId;\n    senderId = extractNode.item.json.senderId || senderId;\n    recipientId = extractNode.item.json.recipientId || recipientId;\n    callbackUrl = extractNode.item.json.callbackUrl;\n    callbackSecret = extractNode.item.json.callbackSecret;\n  }\n} catch (e) {\n  console.log('Could not extract message data from failed execution');\n}\n\n// Prepare error response\nconst errorData = {\n  messageId,\n  senderId,\n  recipientId,\n  aiResponse: 'Thank you for your message. We are experiencing technical difficulties. A team member will respond to you shortly.',\n  status: 'error',\n  error: error?.message || 'Unknown error occurred',\n  errorNode: node?.name || 'Unknown node',\n  n8nExecutionId: $execution.id,\n  timestamp: new Date().toISOString(),\n  callbackUrl,\n  callbackSecret\n};\n\nconsole.log('Error occurred:', errorData);\n\nreturn {\n  json: errorData\n};"
+      },
+      "id": "prepare-error",
+      "name": "Prepare Error Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Secret",
+              "value": "={{ $json.callbackSecret }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "ignoreResponseCode": true
+        },
+        "jsonBody": "={\n  \"messageId\": \"{{ $json.messageId }}\",\n  \"senderId\": \"{{ $json.senderId }}\",\n  \"recipientId\": \"{{ $json.recipientId }}\",\n  \"aiResponse\": \"{{ $json.aiResponse }}\",\n  \"status\": \"{{ $json.status }}\",\n  \"error\": \"{{ $json.error }}\",\n  \"errorNode\": \"{{ $json.errorNode }}\",\n  \"n8nExecutionId\": \"{{ $json.n8nExecutionId }}\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}"
+      },
+      "id": "send-error-callback",
+      "name": "Send Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Message Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Message Data": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Chat Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "main": [
+        [
+          {
+            "node": "Send Success Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Error Response": {
+      "main": [
+        [
+          {
+            "node": "Send Error Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-11-01T22:00:00.000Z",
+      "updatedAt": "2025-11-01T22:00:00.000Z",
+      "id": "1",
+      "name": "Instagram"
+    },
+    {
+      "createdAt": "2025-11-01T22:00:00.000Z",
+      "updatedAt": "2025-11-01T22:00:00.000Z",
+      "id": "2",
+      "name": "AI"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-01T22:00:00.000Z",
+  "versionId": "1"
+}
+
