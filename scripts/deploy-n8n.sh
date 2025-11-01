@@ -52,6 +52,7 @@ set -e
 
 echo "📦 Pulling latest code..."
 cd /root/insta-connect-demo
+git stash
 git pull origin main
 
 echo "📦 Installing dependencies..."
