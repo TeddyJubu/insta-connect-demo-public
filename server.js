@@ -392,7 +392,10 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
       },
     });
 
+    console.log('📄 Pages API response:', JSON.stringify(pagesJson, null, 2));
+
     if (!Array.isArray(pagesJson.data) || pagesJson.data.length === 0) {
+      console.log('❌ No pages found. Response:', pagesJson);
       throw new Error('No managed pages found');
     }
 
