@@ -95,9 +95,9 @@ const n8nQueueLimiter = rateLimit({
   message: 'Too many queue requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Use user ID as key if authenticated, otherwise use IP
-    return req.session?.userId || req.ip;
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health';
   },
   handler: (req, res) => {
     logger.warn('N8N queue rate limit exceeded', {
@@ -121,9 +121,9 @@ const n8nRetryLimiter = rateLimit({
   message: 'Too many retry requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Use user ID as key if authenticated, otherwise use IP
-    return req.session?.userId || req.ip;
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health';
   },
   handler: (req, res) => {
     logger.warn('N8N retry rate limit exceeded', {
