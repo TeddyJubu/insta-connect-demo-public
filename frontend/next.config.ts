@@ -33,6 +33,10 @@ const nextConfig: NextConfig = {
         source: '/whoami',
         destination: `${backendUrl}/whoami`,
       },
+      {
+        source: '/privacy-policy',
+        destination: `${backendUrl}/privacy-policy`,
+      },
     ];
   },
 };
