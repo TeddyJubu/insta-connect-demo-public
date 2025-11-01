@@ -8,7 +8,7 @@
 export interface User {
   id: number;
   email: string;
-  createdAt: string;
+  createdAt?: string;
   lastLoginAt?: string;
 }
 
