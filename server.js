@@ -396,7 +396,13 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
 
     if (!Array.isArray(pagesJson.data) || pagesJson.data.length === 0) {
       console.log('❌ No pages found. Response:', pagesJson);
-      throw new Error('No managed pages found');
+      const error = new Error(
+        'No Facebook Pages found. Please create a Facebook Page at https://www.facebook.com/pages/create and make sure you have admin access to it.',
+      );
+      error.userMessage =
+        'No Facebook Pages found. You need to create a Facebook Page first and have admin access to it.';
+      error.helpUrl = 'https://www.facebook.com/pages/create';
+      throw error;
     }
 
     // Save all pages to database
@@ -480,9 +486,10 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
     res.redirect('/oauth/success');
   } catch (err) {
     console.error('❌ OAuth callback error:', err);
-    const errorMessage = encodeURIComponent(err.message || 'OAuth connection failed');
+    const errorMessage = encodeURIComponent(err.userMessage || err.message || 'OAuth connection failed');
     const errorDetails = encodeURIComponent(String(err));
-    res.redirect(`/oauth/error?error=${errorMessage}&details=${errorDetails}`);
+    const helpUrl = err.helpUrl ? `&helpUrl=${encodeURIComponent(err.helpUrl)}` : '';
+    res.redirect(`/oauth/error?error=${errorMessage}&details=${errorDetails}${helpUrl}`);
   }
 });
 

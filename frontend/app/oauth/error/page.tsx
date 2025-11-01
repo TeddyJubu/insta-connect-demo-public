@@ -16,6 +16,7 @@ function OAuthErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error') || 'An unknown error occurred';
   const details = searchParams.get('details');
+  const helpUrl = searchParams.get('helpUrl');
 
   return (
     <div className="relative min-h-screen bg-slate-50">
@@ -128,8 +129,19 @@ function OAuthErrorContent() {
 
               {/* Action Buttons */}
               <div className="mt-8 space-y-3">
+                {helpUrl && (
+                  <a
+                    href={helpUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button variant="primary" size="lg" fullWidth>
+                      Create Facebook Page
+                    </Button>
+                  </a>
+                )}
                 <Link href="/oauth/start">
-                  <Button variant="primary" size="lg" fullWidth>
+                  <Button variant={helpUrl ? "outline" : "primary"} size="lg" fullWidth>
                     Try Again
                   </Button>
                 </Link>
