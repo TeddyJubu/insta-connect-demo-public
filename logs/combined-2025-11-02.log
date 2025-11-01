@@ -1,0 +1,4 @@
+{"service":"insta-connect-demo","requestId":"req-1762020034933-kj5mxz842","method":"GET","path":"/api/oauth/start","query":{},"userId":null,"ip":"::1","level":"info","message":"Incoming request","timestamp":"2025-11-02 00:00:34"}
+{"service":"insta-connect-demo","requestId":"req-1762020047436-412rsdlqs","method":"GET","path":"/api/oauth/start","query":{},"userId":null,"ip":"::1","level":"info","message":"Incoming request","timestamp":"2025-11-02 00:00:47"}
+{"service":"insta-connect-demo","requestId":"req-1762020047443-j3q1teqqi","method":"GET","path":"/oauth/start","query":{},"userId":null,"ip":"::1","level":"info","message":"Incoming request","timestamp":"2025-11-02 00:00:47"}
+{"service":"insta-connect-demo","requestId":"req-1762020047447-z7qql99wq","method":"GET","path":"/login","query":{},"userId":null,"ip":"::1","level":"info","message":"Incoming request","timestamp":"2025-11-02 00:00:47"}
