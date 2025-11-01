@@ -2,26 +2,51 @@
 
 /**
  * Dashboard Page
- * 
+ *
  * Main dashboard showing connected accounts and quick actions
  */
 
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePages, useWebhookStats } from '@/lib/hooks';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { OnboardingModal } from '@/components/onboarding';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { pages, selectedPage, loading: pagesLoading } = usePages();
   const { stats, loading: statsLoading } = useWebhookStats();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Show onboarding modal for new users without connected pages
+  useEffect(() => {
+    if (!pagesLoading && pages.length === 0) {
+      const hasSeenOnboarding = localStorage.getItem('onboarding-dismissed');
+      if (!hasSeenOnboarding) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [pagesLoading, pages.length]);
 
   return (
-    <DashboardLayout>
-      {/* Header */}
-      <div className="mb-8">
+    <>
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => {
+          setShowOnboarding(false);
+          localStorage.setItem('onboarding-dismissed', 'true');
+        }}
+        onConnect={() => {
+          setShowOnboarding(false);
+          window.location.href = '/oauth/start';
+        }}
+      />
+      <DashboardLayout>
+        {/* Header */}
+        <div className="mb-8">
         <h1 className="font-display text-3xl font-semibold text-slate-900">
           Dashboard
         </h1>
@@ -252,7 +277,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+      </DashboardLayout>
+    </>
   );
 }
 
