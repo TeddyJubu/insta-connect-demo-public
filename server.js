@@ -21,6 +21,10 @@ const webhookDashboardRoutes = require('./src/routes/webhookDashboard');
 const { requireAuth, optionalAuth } = require('./src/middleware/auth');
 const { validateWebhookSignature } = require('./src/middleware/webhookValidation');
 
+// Import utilities
+const { graphApi } = require('./src/utils/graphApi');
+const { createLogger, requestLoggingMiddleware } = require('./src/utils/logger');
+
 const fetch =
   global.fetch ||
   ((...args) => import('node-fetch').then(({ default: nodeFetch }) => nodeFetch(...args)));
@@ -94,6 +98,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For form submissions
 app.use(cookieParser());
+
+// Add request logging middleware
+app.use(requestLoggingMiddleware);
 
 // Session configuration
 app.use(
@@ -279,32 +286,51 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
     }
 
     const shortLived = tokenJson.access_token;
+    const logger = createLogger('oauth');
 
-    // Exchange for long-lived token
-    const longUrl = new URL(`${GRAPH_BASE}/oauth/access_token`);
-    longUrl.searchParams.set('grant_type', 'fb_exchange_token');
-    longUrl.searchParams.set('client_id', APP_ID);
-    longUrl.searchParams.set('client_secret', APP_SECRET);
-    longUrl.searchParams.set('fb_exchange_token', shortLived);
-
-    const longResp = await fetch(longUrl);
-    const longJson = await longResp.json();
-    if (!longResp.ok) {
-      throw new Error(`Upgrade token failed: ${JSON.stringify(longJson)}`);
-    }
+    // Exchange for long-lived token with retry logic
+    logger.info('Exchanging short-lived token for long-lived token');
+    const longJson = await graphApi.exchangeToken(shortLived, APP_ID, APP_SECRET, {
+      onRetry: ({ attempt, maxRetries, delay, classification }) => {
+        logger.warn('Token exchange retry', {
+          attempt,
+          maxRetries,
+          delay,
+          errorType: classification.type,
+        });
+      },
+      onError: ({ attempt, classification, error }) => {
+        logger.error('Token exchange failed', error, {
+          attempt,
+          errorType: classification.type,
+          suggestion: classification.suggestion,
+        });
+      },
+    });
 
     const userToken = longJson.access_token;
     const expiresIn = longJson.expires_in; // seconds
     const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : null;
 
-    // Get Meta user ID
-    const meResp = await fetch(`${GRAPH_BASE}/me`, {
-      headers: { Authorization: `Bearer ${userToken}` },
+    // Get Meta user ID with retry logic
+    logger.info('Fetching user info');
+    const meJson = await graphApi.getMe(userToken, {
+      onRetry: ({ attempt, maxRetries, delay, classification }) => {
+        logger.warn('Get user info retry', {
+          attempt,
+          maxRetries,
+          delay,
+          errorType: classification.type,
+        });
+      },
+      onError: ({ attempt, classification, error }) => {
+        logger.error('Get user info failed', error, {
+          attempt,
+          errorType: classification.type,
+          suggestion: classification.suggestion,
+        });
+      },
     });
-    const meJson = await meResp.json();
-    if (!meResp.ok) {
-      throw new Error(`Fetching user info failed: ${JSON.stringify(meJson)}`);
-    }
 
     // Save Meta account to database
     const metaAccount = await MetaAccount.upsert({
@@ -318,14 +344,26 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
 
     console.log('✅ Meta account saved:', metaAccount.meta_user_id);
 
-    // Fetch user's pages
-    const pagesResp = await fetch(`${GRAPH_BASE}/me/accounts?fields=name,id,access_token`, {
-      headers: { Authorization: `Bearer ${userToken}` },
+    // Fetch user's pages with retry logic
+    logger.info('Fetching user pages');
+    const pagesJson = await graphApi.getPages(userToken, {
+      onRetry: ({ attempt, maxRetries, delay, classification }) => {
+        logger.warn('Get pages retry', {
+          attempt,
+          maxRetries,
+          delay,
+          errorType: classification.type,
+        });
+      },
+      onError: ({ attempt, classification, error }) => {
+        logger.error('Get pages failed', error, {
+          attempt,
+          errorType: classification.type,
+          suggestion: classification.suggestion,
+        });
+      },
     });
-    const pagesJson = await pagesResp.json();
-    if (!pagesResp.ok) {
-      throw new Error(`Fetching pages failed: ${JSON.stringify(pagesJson)}`);
-    }
+
     if (!Array.isArray(pagesJson.data) || pagesJson.data.length === 0) {
       throw new Error('No managed pages found');
     }
@@ -349,17 +387,30 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
 
     console.log('✅ Page selected:', savedPage.page_name);
 
-    // Get Instagram Business Account for the selected page
-    const pageFieldsResp = await fetch(
-      `${GRAPH_BASE}/${firstPage.id}?fields=instagram_business_account{id,username}`,
+    // Get Instagram Business Account for the selected page with retry logic
+    logger.info('Fetching Instagram account');
+    const pageFieldsJson = await graphApi.getPageFields(
+      firstPage.id,
+      firstPage.access_token,
+      'instagram_business_account{id,username}',
       {
-        headers: { Authorization: `Bearer ${firstPage.access_token}` },
+        onRetry: ({ attempt, maxRetries, delay, classification }) => {
+          logger.warn('Get page fields retry', {
+            attempt,
+            maxRetries,
+            delay,
+            errorType: classification.type,
+          });
+        },
+        onError: ({ attempt, classification, error }) => {
+          logger.error('Get page fields failed', error, {
+            attempt,
+            errorType: classification.type,
+            suggestion: classification.suggestion,
+          });
+        },
       },
     );
-    const pageFieldsJson = await pageFieldsResp.json();
-    if (!pageFieldsResp.ok) {
-      throw new Error(`Page fields failed: ${JSON.stringify(pageFieldsJson)}`);
-    }
 
     // Save Instagram account if exists
     if (pageFieldsJson.instagram_business_account) {
@@ -371,17 +422,25 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
       console.log('✅ Instagram account saved:', igAccount.username);
     }
 
-    // Subscribe to webhooks
-    const subUrl = new URL(`${GRAPH_BASE}/${firstPage.id}/subscribed_apps`);
-    subUrl.searchParams.set('subscribed_fields', 'messages');
-    const subResp = await fetch(subUrl, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${firstPage.access_token}` },
+    // Subscribe to webhooks with retry logic
+    logger.info('Subscribing to webhooks');
+    const subJson = await graphApi.subscribeWebhooks(firstPage.id, firstPage.access_token, 'messages', {
+      onRetry: ({ attempt, maxRetries, delay, classification }) => {
+        logger.warn('Subscribe webhooks retry', {
+          attempt,
+          maxRetries,
+          delay,
+          errorType: classification.type,
+        });
+      },
+      onError: ({ attempt, classification, error }) => {
+        logger.error('Subscribe webhooks failed', error, {
+          attempt,
+          errorType: classification.type,
+          suggestion: classification.suggestion,
+        });
+      },
     });
-    const subJson = await subResp.json();
-    if (!subResp.ok) {
-      throw new Error(`Subscribing app failed: ${JSON.stringify(subJson)}`);
-    }
 
     // Save webhook subscription
     await WebhookSubscription.create(savedPage.id, 'messages');
@@ -452,29 +511,59 @@ async function mutateWebhookSubscription(userId, method, field) {
     throw new Error('Connect a page with a valid access token before managing webhooks.');
   }
 
-  const url = new URL(`${GRAPH_BASE}/${selectedPage.page_id}/subscribed_apps`);
-  url.searchParams.set('subscribed_fields', field);
-
-  const response = await fetch(url, {
-    method,
-    headers: { Authorization: `Bearer ${selectedPage.page_access_token}` },
+  const logger = createLogger('webhooks');
+  logger.info(`${method === 'POST' ? 'Subscribing to' : 'Unsubscribing from'} webhook field`, {
+    field,
+    pageId: selectedPage.page_id,
   });
 
-  let payload = null;
   try {
-    payload = await response.json();
-    // eslint-disable-next-line no-unused-vars
-  } catch (err) {
-    // Some Graph responses are empty on success; ignore JSON parse errors then.
-    payload = null;
-  }
+    // Use appropriate method based on HTTP verb
+    const payload =
+      method === 'POST'
+        ? await graphApi.subscribeWebhooks(selectedPage.page_id, selectedPage.page_access_token, field, {
+            onRetry: ({ attempt, maxRetries, delay, classification }) => {
+              logger.warn('Webhook mutation retry', {
+                attempt,
+                maxRetries,
+                delay,
+                errorType: classification.type,
+              });
+            },
+            onError: ({ attempt, classification, error }) => {
+              logger.error('Webhook mutation failed', error, {
+                attempt,
+                errorType: classification.type,
+                suggestion: classification.suggestion,
+              });
+            },
+          })
+        : await graphApi.unsubscribeWebhooks(selectedPage.page_id, selectedPage.page_access_token, field, {
+            onRetry: ({ attempt, maxRetries, delay, classification }) => {
+              logger.warn('Webhook mutation retry', {
+                attempt,
+                maxRetries,
+                delay,
+                errorType: classification.type,
+              });
+            },
+            onError: ({ attempt, classification, error }) => {
+              logger.error('Webhook mutation failed', error, {
+                attempt,
+                errorType: classification.type,
+                suggestion: classification.suggestion,
+              });
+            },
+          });
 
-  if (!response.ok) {
-    const message = payload?.error?.message || JSON.stringify(payload) || 'Unknown error';
-    throw new Error(message);
+    return { payload, pageId: selectedPage.id };
+  } catch (error) {
+    logger.error('Webhook mutation error', error, {
+      field,
+      pageId: selectedPage.page_id,
+    });
+    throw error;
   }
-
-  return { payload, pageId: selectedPage.id };
 }
 
 app.get('/api/webhooks', requireAuth, async (req, res) => {

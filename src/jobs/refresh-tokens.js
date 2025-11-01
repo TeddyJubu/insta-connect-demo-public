@@ -21,11 +21,12 @@ require('dotenv').config();
 const db = require('../db');
 const MetaAccount = require('../models/MetaAccount');
 const Page = require('../models/Page');
+const { graphApi } = require('../utils/graphApi');
+const { createLogger } = require('../utils/logger');
 
 // Configuration
 const APP_ID = process.env.APP_ID;
 const APP_SECRET = process.env.APP_SECRET;
-const GRAPH_BASE = 'https://graph.facebook.com/v20.0';
 
 // Refresh tokens that expire within this many days
 const REFRESH_THRESHOLD_DAYS = 7;
@@ -33,48 +34,62 @@ const REFRESH_THRESHOLD_DAYS = 7;
 // Dry run mode (don't actually refresh, just log what would happen)
 const DRY_RUN = process.argv.includes('--dry-run');
 
+const logger = createLogger('token-refresh');
+
 /**
- * Refresh a Meta user access token
+ * Refresh a Meta user access token with retry logic
  * @param {string} currentToken - Current access token
  * @returns {Promise<Object>} New token data { access_token, expires_in }
  */
 async function refreshMetaToken(currentToken) {
-  const url = new URL(`${GRAPH_BASE}/oauth/access_token`);
-  url.searchParams.set('grant_type', 'fb_exchange_token');
-  url.searchParams.set('client_id', APP_ID);
-  url.searchParams.set('client_secret', APP_SECRET);
-  url.searchParams.set('fb_exchange_token', currentToken);
-
-  const response = await fetch(url);
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(`Token refresh failed: ${JSON.stringify(data)}`);
-  }
-
-  return data;
+  return graphApi.refreshToken(currentToken, APP_ID, APP_SECRET, {
+    onRetry: ({ attempt, maxRetries, delay, classification }) => {
+      logger.warn('Token refresh retry', {
+        attempt,
+        maxRetries,
+        delay,
+        errorType: classification.type,
+      });
+    },
+    onError: ({ attempt, classification, error }) => {
+      logger.error('Token refresh failed', error, {
+        attempt,
+        errorType: classification.type,
+        suggestion: classification.suggestion,
+      });
+    },
+  });
 }
 
 /**
- * Refresh a Page access token
+ * Refresh a Page access token with retry logic
  * @param {string} metaUserId - Meta user ID
  * @param {string} userAccessToken - User access token
  * @param {string} pageId - Page ID
  * @returns {Promise<string>} New page access token
  */
 async function refreshPageToken(metaUserId, userAccessToken, pageId) {
-  const url = new URL(`${GRAPH_BASE}/${metaUserId}/accounts`);
-  url.searchParams.set('access_token', userAccessToken);
-
-  const response = await fetch(url);
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(`Page token refresh failed: ${JSON.stringify(data)}`);
-  }
+  const pagesData = await graphApi.makeRequest(`/${metaUserId}/accounts`, {
+    accessToken: userAccessToken,
+    onRetry: ({ attempt, maxRetries, delay, classification }) => {
+      logger.warn('Page token refresh retry', {
+        attempt,
+        maxRetries,
+        delay,
+        errorType: classification.type,
+      });
+    },
+    onError: ({ attempt, classification, error }) => {
+      logger.error('Page token refresh failed', error, {
+        attempt,
+        errorType: classification.type,
+        suggestion: classification.suggestion,
+      });
+    },
+  });
 
   // Find the specific page in the response
-  const page = data.data?.find((p) => p.id === pageId);
+  const page = pagesData.data?.find((p) => p.id === pageId);
   if (!page) {
     throw new Error(`Page ${pageId} not found in user's pages`);
   }
