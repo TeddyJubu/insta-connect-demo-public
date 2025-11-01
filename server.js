@@ -237,7 +237,9 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
     const stateExpired = typeof issuedAt === 'number' ? Date.now() - issuedAt > STATE_TTL : true;
 
     if (!code || !state || state !== cookieState || !issuedAt || stateExpired) {
-      return res.status(400).send('Invalid state or missing code');
+      const errorMessage = encodeURIComponent('Invalid OAuth state or authorization code');
+      const errorDetails = encodeURIComponent('The OAuth flow may have expired or been tampered with. Please try again.');
+      return res.redirect(`/oauth/error?error=${errorMessage}&details=${errorDetails}`);
     }
 
     stateStore.delete(state);
@@ -364,10 +366,12 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
     await WebhookSubscription.create(savedPage.id, 'messages');
     console.log('✅ Webhook subscription saved: messages');
 
-    res.redirect('/?status=ok');
+    res.redirect('/oauth/success');
   } catch (err) {
     console.error('❌ OAuth callback error:', err);
-    res.status(500).send(String(err));
+    const errorMessage = encodeURIComponent(err.message || 'OAuth connection failed');
+    const errorDetails = encodeURIComponent(String(err));
+    res.redirect(`/oauth/error?error=${errorMessage}&details=${errorDetails}`);
   }
 });
 
