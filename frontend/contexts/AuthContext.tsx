@@ -90,14 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       await authApi.register(email, password, confirmPassword);
-      
+
       // Check auth status after registration
       await checkAuth();
-      
-      // Redirect to onboarding
-      router.push('/onboarding');
+
+      // Redirect to dashboard
+      router.push('/dashboard');
     } catch (err: any) {
       console.error('Registration failed:', err);
       const errorMessage = err.response?.data?.error || 'Registration failed';
