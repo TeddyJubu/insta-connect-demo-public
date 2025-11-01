@@ -73,28 +73,46 @@ router.get('/register', (req, res) => {
 /**
  * POST /auth/register
  * Handle registration
+ * Supports both form submissions (redirects) and JSON API calls (JSON responses)
  */
 router.post('/register', async (req, res) => {
   try {
     const { email, password, confirmPassword } = req.body;
+    const isJsonRequest = req.headers['content-type']?.includes('application/json');
 
     // Validation
     if (!email || !password || !confirmPassword) {
-      return res.redirect('/auth/register?error=' + encodeURIComponent('All fields are required'));
+      const error = 'All fields are required';
+      if (isJsonRequest) {
+        return res.status(400).json({ error });
+      }
+      return res.redirect('/auth/register?error=' + encodeURIComponent(error));
     }
 
     if (password !== confirmPassword) {
-      return res.redirect('/auth/register?error=' + encodeURIComponent('Passwords do not match'));
+      const error = 'Passwords do not match';
+      if (isJsonRequest) {
+        return res.status(400).json({ error });
+      }
+      return res.redirect('/auth/register?error=' + encodeURIComponent(error));
     }
 
     if (password.length < 8) {
-      return res.redirect('/auth/register?error=' + encodeURIComponent('Password must be at least 8 characters'));
+      const error = 'Password must be at least 8 characters';
+      if (isJsonRequest) {
+        return res.status(400).json({ error });
+      }
+      return res.redirect('/auth/register?error=' + encodeURIComponent(error));
     }
 
     // Check if user already exists
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
-      return res.redirect('/auth/register?error=' + encodeURIComponent('Email already registered'));
+      const error = 'Email already registered';
+      if (isJsonRequest) {
+        return res.status(400).json({ error });
+      }
+      return res.redirect('/auth/register?error=' + encodeURIComponent(error));
     }
 
     // Create user
@@ -105,11 +123,23 @@ router.post('/register', async (req, res) => {
     req.session.userEmail = user.email;
 
     console.log('✅ User registered and logged in:', user.email);
+
+    if (isJsonRequest) {
+      return res.json({
+        success: true,
+        user: { id: user.id, email: user.email },
+        message: 'Registration successful'
+      });
+    }
     res.redirect('/');
 
   } catch (error) {
     console.error('❌ Registration error:', error);
-    res.redirect('/auth/register?error=' + encodeURIComponent('Registration failed. Please try again.'));
+    const errorMsg = 'Registration failed. Please try again.';
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ error: errorMsg });
+    }
+    res.redirect('/auth/register?error=' + encodeURIComponent(errorMsg));
   }
 });
 
@@ -179,21 +209,31 @@ router.get('/login', (req, res) => {
 /**
  * POST /auth/login
  * Handle login
+ * Supports both form submissions (redirects) and JSON API calls (JSON responses)
  */
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    const isJsonRequest = req.headers['content-type']?.includes('application/json');
 
     // Validation
     if (!email || !password) {
-      return res.redirect('/auth/login?error=' + encodeURIComponent('Email and password are required'));
+      const error = 'Email and password are required';
+      if (isJsonRequest) {
+        return res.status(400).json({ error });
+      }
+      return res.redirect('/auth/login?error=' + encodeURIComponent(error));
     }
 
     // Verify user
     const user = await User.verify(email, password);
-    
+
     if (!user) {
-      return res.redirect('/auth/login?error=' + encodeURIComponent('Invalid email or password'));
+      const error = 'Invalid email or password';
+      if (isJsonRequest) {
+        return res.status(401).json({ error });
+      }
+      return res.redirect('/auth/login?error=' + encodeURIComponent(error));
     }
 
     // Log user in
@@ -201,28 +241,52 @@ router.post('/login', async (req, res) => {
     req.session.userEmail = user.email;
 
     console.log('✅ User logged in:', user.email);
+
+    if (isJsonRequest) {
+      return res.json({
+        success: true,
+        user: { id: user.id, email: user.email },
+        message: 'Login successful'
+      });
+    }
     res.redirect('/');
 
   } catch (error) {
     console.error('❌ Login error:', error);
-    res.redirect('/auth/login?error=' + encodeURIComponent('Login failed. Please try again.'));
+    const errorMsg = 'Login failed. Please try again.';
+    if (req.headers['content-type']?.includes('application/json')) {
+      return res.status(500).json({ error: errorMsg });
+    }
+    res.redirect('/auth/login?error=' + encodeURIComponent(errorMsg));
   }
 });
 
 /**
  * POST /auth/logout
  * Handle logout
+ * Supports both form submissions (redirects) and JSON API calls (JSON responses)
  */
 router.post('/logout', (req, res) => {
   const userEmail = req.session.userEmail;
-  
+  const isJsonRequest = req.headers['content-type']?.includes('application/json');
+
   req.session.destroy((err) => {
     if (err) {
       console.error('❌ Logout error:', err);
+      if (isJsonRequest) {
+        return res.status(500).json({ error: 'Logout failed' });
+      }
       return res.redirect('/?error=' + encodeURIComponent('Logout failed'));
     }
-    
+
     console.log('✅ User logged out:', userEmail);
+
+    if (isJsonRequest) {
+      return res.json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+    }
     res.redirect('/auth/login?message=' + encodeURIComponent('Logged out successfully'));
   });
 });

@@ -36,12 +36,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await authApi.getStatus();
       const data: AuthStatus = response.data;
-      
-      if (data.authenticated && data.user) {
-        setUser(data.user);
+
+      if (data.authenticated) {
+        // Status endpoint returns { authenticated: true, userId, email }
+        setUser({
+          id: data.userId,
+          email: data.email,
+        });
       } else {
         setUser(null);
       }

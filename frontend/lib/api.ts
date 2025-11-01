@@ -68,11 +68,17 @@ export default api;
 // Auth
 export const authApi = {
   getStatus: () => api.get('/auth/status'),
-  login: (email: string, password: string) => 
-    api.post('/auth/login', { email, password }),
-  register: (email: string, password: string, confirmPassword: string) => 
-    api.post('/auth/register', { email, password, confirmPassword }),
-  logout: () => api.post('/auth/logout'),
+  login: (email: string, password: string) =>
+    api.post('/auth/login', { email, password }, {
+      headers: { 'Content-Type': 'application/json' }
+    }),
+  register: (email: string, password: string, confirmPassword: string) =>
+    api.post('/auth/register', { email, password, confirmPassword }, {
+      headers: { 'Content-Type': 'application/json' }
+    }),
+  logout: () => api.post('/auth/logout', {}, {
+    headers: { 'Content-Type': 'application/json' }
+  }),
 };
 
 // Webhook Events

@@ -15,6 +15,8 @@ export interface User {
 // Auth Status
 export interface AuthStatus {
   authenticated: boolean;
+  userId?: number;
+  email?: string;
   user?: User;
 }
 
