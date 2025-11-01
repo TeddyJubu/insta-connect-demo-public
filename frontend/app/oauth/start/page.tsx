@@ -19,7 +19,9 @@ export default function OAuthStartPage() {
   const handleConnect = () => {
     setIsRedirecting(true);
     // Redirect to backend OAuth endpoint
-    window.location.href = '/login';
+    // Use /api/oauth/start to avoid conflicts with frontend routes
+    // The Next.js rewrite will proxy /api/* to the backend
+    window.location.href = '/api/oauth/start';
   };
 
   // If not authenticated, show message

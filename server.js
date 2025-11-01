@@ -144,9 +144,7 @@ if (shouldEnforceHttps) {
 // Mount authentication routes
 app.use('/auth', authRoutes);
 
-// Mount webhook dashboard API routes
-app.use('/api', webhookDashboardRoutes);
-
+// OAuth configuration and helper functions
 const oauthCookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
@@ -188,6 +186,20 @@ function makeState() {
   stateStore.set(state, Date.now());
   return state;
 }
+
+// OAuth start endpoint (must be before /api middleware to avoid conflicts)
+app.get('/api/oauth/start', requireAuth, (req, res) => {
+  try {
+    const state = makeState();
+    res.cookie('oauth_state', state, oauthCookieOptions);
+    res.redirect(buildAuthUrl(state));
+  } catch (err) {
+    res.status(500).send(String(err));
+  }
+});
+
+// Mount webhook dashboard API routes
+app.use('/api', webhookDashboardRoutes);
 
 app.get('/', optionalAuth, async (req, res) => {
   // If not authenticated, show login/register page
@@ -248,6 +260,17 @@ app.use(express.static('public'));
 
 // Instagram OAuth login (requires user to be authenticated first)
 app.get('/login', requireAuth, (req, res) => {
+  try {
+    const state = makeState();
+    res.cookie('oauth_state', state, oauthCookieOptions);
+    res.redirect(buildAuthUrl(state));
+  } catch (err) {
+    res.status(500).send(String(err));
+  }
+});
+
+// OAuth start endpoint (alias for /login for clarity)
+app.get('/oauth/start', requireAuth, (req, res) => {
   try {
     const state = makeState();
     res.cookie('oauth_state', state, oauthCookieOptions);
