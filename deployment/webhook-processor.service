@@ -1,0 +1,20 @@
+[Unit]
+Description=Instagram Connect Demo - Webhook Processor
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/insta-connect-demo
+EnvironmentFile=/etc/insta-connect-demo/doppler.env
+ExecStart=/usr/bin/doppler run --project=insta-connect-demo --config=dev_insta -- /usr/bin/node src/jobs/webhook-scheduler.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=insta-webhook-processor
+
+[Install]
+WantedBy=multi-user.target
+
