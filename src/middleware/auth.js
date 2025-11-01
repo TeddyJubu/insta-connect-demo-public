@@ -12,7 +12,7 @@ function requireAuth(req, res, next) {
     console.log('⚠️  Unauthenticated access attempt to:', req.path);
     return res.redirect('/auth/login?error=' + encodeURIComponent('Please log in to continue'));
   }
-  
+
   // User is authenticated, continue
   next();
 }
@@ -26,10 +26,10 @@ function requireAuthAPI(req, res, next) {
     console.log('⚠️  Unauthenticated API access attempt to:', req.path);
     return res.status(401).json({
       error: 'Authentication required',
-      message: 'Please log in to access this resource'
+      message: 'Please log in to access this resource',
     });
   }
-  
+
   // User is authenticated, continue
   next();
 }
@@ -42,7 +42,7 @@ function optionalAuth(req, res, next) {
   if (req.session.userId) {
     req.user = {
       id: req.session.userId,
-      email: req.session.userEmail
+      email: req.session.userEmail,
     };
   }
   next();
@@ -51,6 +51,5 @@ function optionalAuth(req, res, next) {
 module.exports = {
   requireAuth,
   requireAuthAPI,
-  optionalAuth
+  optionalAuth,
 };
-

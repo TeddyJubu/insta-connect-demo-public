@@ -14,7 +14,7 @@ async function runMigration() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
 
   console.log('🔄 Running database migration...');
-  
+
   try {
     await pool.query(schema);
     console.log('✅ Database migration completed successfully!');
@@ -45,4 +45,3 @@ if (require.main === module) {
 }
 
 module.exports = { runMigration };
-

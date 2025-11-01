@@ -12,12 +12,12 @@ class User {
    */
   static async create(email, password) {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-    
+
     const result = await db.query(
       'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at',
-      [email, passwordHash]
+      [email, passwordHash],
     );
-    
+
     return result.rows[0];
   }
 
@@ -29,9 +29,9 @@ class User {
   static async findByEmail(email) {
     const result = await db.query(
       'SELECT id, email, password_hash, created_at, updated_at, last_login_at FROM users WHERE email = $1',
-      [email]
+      [email],
     );
-    
+
     return result.rows[0] || null;
   }
 
@@ -43,9 +43,9 @@ class User {
   static async findById(id) {
     const result = await db.query(
       'SELECT id, email, created_at, updated_at, last_login_at FROM users WHERE id = $1',
-      [id]
+      [id],
     );
-    
+
     return result.rows[0] || null;
   }
 
@@ -57,24 +57,22 @@ class User {
    */
   static async verify(email, password) {
     const user = await this.findByEmail(email);
-    
+
     if (!user || !user.password_hash) {
       return null;
     }
-    
+
     const isValid = await bcrypt.compare(password, user.password_hash);
-    
+
     if (!isValid) {
       return null;
     }
-    
+
     // Update last login time
-    await db.query(
-      'UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [user.id]
-    );
-    
+    await db.query('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
+
     // Return user without password hash
+    // eslint-disable-next-line no-unused-vars
     const { password_hash, ...userWithoutPassword } = user;
     return userWithoutPassword;
   }
@@ -87,12 +85,12 @@ class User {
    */
   static async updatePassword(userId, newPassword) {
     const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    
-    const result = await db.query(
-      'UPDATE users SET password_hash = $1 WHERE id = $2',
-      [passwordHash, userId]
-    );
-    
+
+    const result = await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [
+      passwordHash,
+      userId,
+    ]);
+
     return result.rowCount > 0;
   }
 
@@ -102,14 +100,10 @@ class User {
    * @returns {Promise<boolean>} Success status
    */
   static async delete(userId) {
-    const result = await db.query(
-      'DELETE FROM users WHERE id = $1',
-      [userId]
-    );
-    
+    const result = await db.query('DELETE FROM users WHERE id = $1', [userId]);
+
     return result.rowCount > 0;
   }
 }
 
 module.exports = User;
-

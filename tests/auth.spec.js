@@ -16,21 +16,23 @@ jest.mock('../src/models/User');
 // Create test app
 const createTestApp = () => {
   const app = express();
-  
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
-  
+
   // Mock session middleware
-  app.use(session({
-    secret: 'test-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false, httpOnly: true },
-  }));
-  
+  app.use(
+    session({
+      secret: 'test-secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: false, httpOnly: true },
+    }),
+  );
+
   app.use('/auth', authRoutes);
-  
+
   return app;
 };
 
@@ -211,8 +213,7 @@ describe('Authentication Routes', () => {
 
   describe('GET /auth/status', () => {
     it('should return authenticated false when not logged in', async () => {
-      const response = await request(app)
-        .get('/auth/status');
+      const response = await request(app).get('/auth/status');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ authenticated: false });
@@ -227,13 +228,10 @@ describe('Authentication Routes', () => {
         email: 'test@example.com',
       });
 
-      await agent
-        .post('/auth/login')
-        .set('Content-Type', 'application/json')
-        .send({
-          email: 'test@example.com',
-          password: 'TestPassword123!',
-        });
+      await agent.post('/auth/login').set('Content-Type', 'application/json').send({
+        email: 'test@example.com',
+        password: 'TestPassword123!',
+      });
 
       // Then check status
       const response = await agent.get('/auth/status');
@@ -255,18 +253,13 @@ describe('Authentication Routes', () => {
         email: 'test@example.com',
       });
 
-      await agent
-        .post('/auth/login')
-        .set('Content-Type', 'application/json')
-        .send({
-          email: 'test@example.com',
-          password: 'TestPassword123!',
-        });
+      await agent.post('/auth/login').set('Content-Type', 'application/json').send({
+        email: 'test@example.com',
+        password: 'TestPassword123!',
+      });
 
       // Then logout
-      const response = await agent
-        .post('/auth/logout')
-        .set('Content-Type', 'application/json');
+      const response = await agent.post('/auth/logout').set('Content-Type', 'application/json');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
@@ -280,4 +273,3 @@ describe('Authentication Routes', () => {
     });
   });
 });
-

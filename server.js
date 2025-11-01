@@ -9,7 +9,6 @@ const helmet = require('helmet');
 
 // Import database and models
 const db = require('./src/db');
-const User = require('./src/models/User');
 const MetaAccount = require('./src/models/MetaAccount');
 const Page = require('./src/models/Page');
 const InstagramAccount = require('./src/models/InstagramAccount');
@@ -22,7 +21,9 @@ const webhookDashboardRoutes = require('./src/routes/webhookDashboard');
 const { requireAuth, optionalAuth } = require('./src/middleware/auth');
 const { validateWebhookSignature } = require('./src/middleware/webhookValidation');
 
-const fetch = global.fetch || ((...args) => import('node-fetch').then(({ default: nodeFetch }) => nodeFetch(...args)));
+const fetch =
+  global.fetch ||
+  ((...args) => import('node-fetch').then(({ default: nodeFetch }) => nodeFetch(...args)));
 
 const app = express();
 const {
@@ -44,10 +45,18 @@ const isProduction = NODE_ENV === 'production';
 const shouldEnforceHttps = ENFORCE_HTTPS === 'true';
 const DEFAULT_STATE_TTL = 10 * 60 * 1000;
 const parsedStateTtl = Number(OAUTH_STATE_TTL_MS);
-const STATE_TTL = Number.isFinite(parsedStateTtl) && parsedStateTtl > 0 ? parsedStateTtl : DEFAULT_STATE_TTL;
+const STATE_TTL =
+  Number.isFinite(parsedStateTtl) && parsedStateTtl > 0 ? parsedStateTtl : DEFAULT_STATE_TTL;
 const stateStore = new Map();
 
-if (!APP_ID || !APP_SECRET || !OAUTH_REDIRECT_URI || !SCOPES || !OAUTH_STATE_SECRET || !VERIFY_TOKEN) {
+if (
+  !APP_ID ||
+  !APP_SECRET ||
+  !OAUTH_REDIRECT_URI ||
+  !SCOPES ||
+  !OAUTH_STATE_SECRET ||
+  !VERIFY_TOKEN
+) {
   console.warn('⚠️  Missing required OAuth environment variables; check your .env file.');
 }
 
@@ -56,49 +65,56 @@ if (!SESSION_SECRET) {
 }
 
 app.set('trust proxy', 1);
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'"],
+      },
     },
-  },
-}));
+  }),
+);
 
 // Capture raw body for webhook signature validation
 // This must come BEFORE express.json()
-app.use('/webhook', express.json({
-  verify: (req, res, buf) => {
-    req.rawBody = buf.toString('utf8');
-  }
-}));
+app.use(
+  '/webhook',
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString('utf8');
+    },
+  }),
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For form submissions
 app.use(cookieParser());
 
 // Session configuration
-app.use(session({
-  store: new pgSession({
-    pool: db.pool,
-    tableName: 'sessions',
-    createTableIfMissing: false, // We create it in migration
+app.use(
+  session({
+    store: new pgSession({
+      pool: db.pool,
+      tableName: 'sessions',
+      createTableIfMissing: false, // We create it in migration
+    }),
+    secret: SESSION_SECRET || 'insecure-dev-secret-change-me',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: isProduction,
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      sameSite: 'lax',
+    },
+    name: 'insta_connect_sid',
   }),
-  secret: SESSION_SECRET || 'insecure-dev-secret-change-me',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: isProduction,
-    httpOnly: true,
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    sameSite: 'lax',
-  },
-  name: 'insta_connect_sid',
-}));
+);
 
 if (shouldEnforceHttps) {
   app.use((req, res, next) => {
@@ -238,7 +254,9 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
 
     if (!code || !state || state !== cookieState || !issuedAt || stateExpired) {
       const errorMessage = encodeURIComponent('Invalid OAuth state or authorization code');
-      const errorDetails = encodeURIComponent('The OAuth flow may have expired or been tampered with. Please try again.');
+      const errorDetails = encodeURIComponent(
+        'The OAuth flow may have expired or been tampered with. Please try again.',
+      );
       return res.redirect(`/oauth/error?error=${errorMessage}&details=${errorDetails}`);
     }
 
@@ -332,9 +350,12 @@ app.get('/oauth/callback', requireAuth, async (req, res) => {
     console.log('✅ Page selected:', savedPage.page_name);
 
     // Get Instagram Business Account for the selected page
-    const pageFieldsResp = await fetch(`${GRAPH_BASE}/${firstPage.id}?fields=instagram_business_account{id,username}`, {
-      headers: { Authorization: `Bearer ${firstPage.access_token}` },
-    });
+    const pageFieldsResp = await fetch(
+      `${GRAPH_BASE}/${firstPage.id}?fields=instagram_business_account{id,username}`,
+      {
+        headers: { Authorization: `Bearer ${firstPage.access_token}` },
+      },
+    );
     const pageFieldsJson = await pageFieldsResp.json();
     if (!pageFieldsResp.ok) {
       throw new Error(`Page fields failed: ${JSON.stringify(pageFieldsJson)}`);
@@ -405,11 +426,13 @@ async function serializeStatus(userId) {
       name: selectedPage.page_name,
       access_token: selectedPage.page_access_token,
     },
-    instagram: instagram ? {
-      id: instagram.instagram_id,
-      username: instagram.username,
-    } : null,
-    webhooks: webhookSubs.map(sub => sub.field),
+    instagram: instagram
+      ? {
+          id: instagram.instagram_id,
+          username: instagram.username,
+        }
+      : null,
+    webhooks: webhookSubs.map((sub) => sub.field),
   };
 }
 
@@ -440,6 +463,7 @@ async function mutateWebhookSubscription(userId, method, field) {
   let payload = null;
   try {
     payload = await response.json();
+    // eslint-disable-next-line no-unused-vars
   } catch (err) {
     // Some Graph responses are empty on success; ignore JSON parse errors then.
     payload = null;
@@ -461,7 +485,7 @@ app.get('/api/webhooks', requireAuth, async (req, res) => {
     }
 
     const webhookSubs = await WebhookSubscription.findByPageId(selectedPage.id);
-    res.json({ webhooks: webhookSubs.map(sub => sub.field) });
+    res.json({ webhooks: webhookSubs.map((sub) => sub.field) });
   } catch (err) {
     console.error('Failed to fetch webhooks', err);
     res.status(500).json({ error: String(err.message || err) });
@@ -546,7 +570,7 @@ app.post('/webhook', validateWebhookSignature(APP_SECRET), async (req, res) => {
       // Look up the page by Instagram account ID
       const result = await db.query(
         `SELECT page_id FROM instagram_accounts WHERE instagram_id = $1`,
-        [instagramId]
+        [instagramId],
       );
 
       if (result.rows.length > 0) {

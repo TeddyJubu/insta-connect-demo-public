@@ -1,6 +1,6 @@
 /**
  * Jest Setup File
- * 
+ *
  * Configure test environment and global test utilities
  */
 
@@ -25,4 +25,3 @@ process.env.OAUTH_STATE_SECRET = 'test-oauth-state-secret';
 
 // Increase timeout for database operations
 jest.setTimeout(10000);
-

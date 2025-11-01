@@ -3,7 +3,7 @@ const crypto = require('crypto');
 
 /**
  * Test script for webhook signature validation
- * 
+ *
  * This script demonstrates how to:
  * 1. Create a valid webhook signature
  * 2. Send a test webhook to the local server
@@ -23,20 +23,20 @@ const samplePayload = {
       messaging: [
         {
           sender: {
-            id: '987654321'
+            id: '987654321',
           },
           recipient: {
-            id: '123456789'
+            id: '123456789',
           },
           timestamp: Date.now(),
           message: {
             mid: 'mid.123456',
-            text: 'Hello from test!'
-          }
-        }
-      ]
-    }
-  ]
+            text: 'Hello from test!',
+          },
+        },
+      ],
+    },
+  ],
 };
 
 /**
@@ -68,10 +68,10 @@ async function sendTestWebhook() {
 
   // Convert payload to JSON string
   const payloadString = JSON.stringify(samplePayload);
-  
+
   // Generate signature
   const signature = generateSignature(payloadString, APP_SECRET);
-  
+
   console.log('📝 Test Payload:');
   console.log(JSON.stringify(samplePayload, null, 2));
   console.log('');
@@ -153,8 +153,7 @@ async function sendTestWebhook() {
 }
 
 // Run tests
-sendTestWebhook().catch(error => {
+sendTestWebhook().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
-

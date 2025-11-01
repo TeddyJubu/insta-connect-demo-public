@@ -22,16 +22,19 @@ const db = require('../src/db');
 // Create test app
 const createTestApp = () => {
   const app = express();
-  
+
   // Capture raw body for webhook signature validation
-  app.use('/webhook', express.json({
-    verify: (req, res, buf) => {
-      req.rawBody = buf.toString('utf8');
-    }
-  }));
-  
+  app.use(
+    '/webhook',
+    express.json({
+      verify: (req, res, buf) => {
+        req.rawBody = buf.toString('utf8');
+      },
+    }),
+  );
+
   app.use(express.json());
-  
+
   // Webhook verification endpoint (GET)
   app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
@@ -63,7 +66,7 @@ const createTestApp = () => {
         const instagramId = payload.entry[0].id;
         const result = await db.query(
           `SELECT page_id FROM instagram_accounts WHERE instagram_id = $1`,
-          [instagramId]
+          [instagramId],
         );
 
         if (result.rows.length > 0) {
@@ -90,10 +93,7 @@ const createTestApp = () => {
 // Helper to generate valid webhook signature
 function generateWebhookSignature(payload, appSecret) {
   const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
-  const signature = crypto
-    .createHmac('sha256', appSecret)
-    .update(body)
-    .digest('hex');
+  const signature = crypto.createHmac('sha256', appSecret).update(body).digest('hex');
   return `sha256=${signature}`;
 }
 
@@ -107,37 +107,31 @@ describe('Webhook Routes', () => {
 
   describe('GET /webhook - Verification Handshake', () => {
     it('should verify webhook subscription with correct token', async () => {
-      const response = await request(app)
-        .get('/webhook')
-        .query({
-          'hub.mode': 'subscribe',
-          'hub.verify_token': 'test-verify-token',
-          'hub.challenge': 'test-challenge-123',
-        });
+      const response = await request(app).get('/webhook').query({
+        'hub.mode': 'subscribe',
+        'hub.verify_token': 'test-verify-token',
+        'hub.challenge': 'test-challenge-123',
+      });
 
       expect(response.status).toBe(200);
       expect(response.text).toBe('test-challenge-123');
     });
 
     it('should reject verification with incorrect token', async () => {
-      const response = await request(app)
-        .get('/webhook')
-        .query({
-          'hub.mode': 'subscribe',
-          'hub.verify_token': 'wrong-token',
-          'hub.challenge': 'test-challenge-123',
-        });
+      const response = await request(app).get('/webhook').query({
+        'hub.mode': 'subscribe',
+        'hub.verify_token': 'wrong-token',
+        'hub.challenge': 'test-challenge-123',
+      });
 
       expect(response.status).toBe(403);
     });
 
     it('should reject verification with missing mode', async () => {
-      const response = await request(app)
-        .get('/webhook')
-        .query({
-          'hub.verify_token': 'test-verify-token',
-          'hub.challenge': 'test-challenge-123',
-        });
+      const response = await request(app).get('/webhook').query({
+        'hub.verify_token': 'test-verify-token',
+        'hub.challenge': 'test-challenge-123',
+      });
 
       expect(response.status).toBe(403);
     });
@@ -299,4 +293,3 @@ describe('Webhook Routes', () => {
     });
   });
 });
-

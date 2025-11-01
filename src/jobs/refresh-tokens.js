@@ -2,16 +2,16 @@
 
 /**
  * Token Refresh Job
- * 
+ *
  * This script refreshes Meta (Facebook/Instagram) access tokens before they expire.
  * It should be run daily via cron or systemd timer.
- * 
+ *
  * Meta tokens are long-lived (60 days) but need to be refreshed periodically.
  * Tokens can be refreshed if they are:
  * - At least 24 hours old
  * - Not yet expired
  * - Refreshed tokens are valid for another 60 days from refresh date
- * 
+ *
  * Usage:
  *   node src/jobs/refresh-tokens.js
  *   node src/jobs/refresh-tokens.js --dry-run  # Test without making changes
@@ -74,7 +74,7 @@ async function refreshPageToken(metaUserId, userAccessToken, pageId) {
   }
 
   // Find the specific page in the response
-  const page = data.data?.find(p => p.id === pageId);
+  const page = data.data?.find((p) => p.id === pageId);
   if (!page) {
     throw new Error(`Page ${pageId} not found in user's pages`);
   }
@@ -91,11 +91,18 @@ async function refreshPageToken(metaUserId, userAccessToken, pageId) {
  * @param {Date|null} newExpiresAt - New expiration date
  * @param {string|null} errorMessage - Error message if failed
  */
-async function logMetaAccountRefresh(metaAccountId, refreshType, success, oldExpiresAt, newExpiresAt, errorMessage = null) {
+async function logMetaAccountRefresh(
+  metaAccountId,
+  refreshType,
+  success,
+  oldExpiresAt,
+  newExpiresAt,
+  errorMessage = null,
+) {
   await db.query(
     `INSERT INTO token_refresh_log (meta_account_id, refresh_type, success, old_expires_at, new_expires_at, error_message)
      VALUES ($1, $2, $3, $4, $5, $6)`,
-    [metaAccountId, refreshType, success, oldExpiresAt, newExpiresAt, errorMessage]
+    [metaAccountId, refreshType, success, oldExpiresAt, newExpiresAt, errorMessage],
   );
 }
 
@@ -108,11 +115,18 @@ async function logMetaAccountRefresh(metaAccountId, refreshType, success, oldExp
  * @param {Date|null} newExpiresAt - New expiration date
  * @param {string|null} errorMessage - Error message if failed
  */
-async function logPageRefresh(pageId, refreshType, success, oldExpiresAt, newExpiresAt, errorMessage = null) {
+async function logPageRefresh(
+  pageId,
+  refreshType,
+  success,
+  oldExpiresAt,
+  newExpiresAt,
+  errorMessage = null,
+) {
   await db.query(
     `INSERT INTO token_refresh_log (page_id, refresh_type, success, old_expires_at, new_expires_at, error_message)
      VALUES ($1, $2, $3, $4, $5, $6)`,
-    [pageId, refreshType, success, oldExpiresAt, newExpiresAt, errorMessage]
+    [pageId, refreshType, success, oldExpiresAt, newExpiresAt, errorMessage],
   );
 }
 
@@ -121,15 +135,19 @@ async function logPageRefresh(pageId, refreshType, success, oldExpiresAt, newExp
  */
 async function refreshMetaAccounts() {
   console.log('\n🔄 Refreshing Meta account tokens...');
-  
+
   const expiringAccounts = await MetaAccount.findExpiringTokens(REFRESH_THRESHOLD_DAYS);
-  console.log(`Found ${expiringAccounts.length} Meta account(s) with tokens expiring within ${REFRESH_THRESHOLD_DAYS} days`);
+  console.log(
+    `Found ${expiringAccounts.length} Meta account(s) with tokens expiring within ${REFRESH_THRESHOLD_DAYS} days`,
+  );
 
   let successCount = 0;
   let failureCount = 0;
 
   for (const account of expiringAccounts) {
-    const daysUntilExpiry = Math.ceil((new Date(account.expires_at) - new Date()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (new Date(account.expires_at) - new Date()) / (1000 * 60 * 60 * 24),
+    );
     console.log(`\n  Meta Account ID ${account.id} (User: ${account.meta_user_id})`);
     console.log(`    Expires: ${account.expires_at} (${daysUntilExpiry} days)`);
 
@@ -158,7 +176,14 @@ async function refreshMetaAccounts() {
       successCount++;
     } catch (error) {
       console.error(`    ❌ Failed to refresh token: ${error.message}`);
-      await logMetaAccountRefresh(account.id, 'scheduled', false, new Date(account.expires_at), null, error.message);
+      await logMetaAccountRefresh(
+        account.id,
+        'scheduled',
+        false,
+        new Date(account.expires_at),
+        null,
+        error.message,
+      );
       failureCount++;
     }
   }
@@ -172,15 +197,19 @@ async function refreshMetaAccounts() {
  */
 async function refreshPageTokens() {
   console.log('\n🔄 Refreshing Page tokens...');
-  
+
   const expiringPages = await Page.findExpiringTokens(REFRESH_THRESHOLD_DAYS);
-  console.log(`Found ${expiringPages.length} Page(s) with tokens expiring within ${REFRESH_THRESHOLD_DAYS} days`);
+  console.log(
+    `Found ${expiringPages.length} Page(s) with tokens expiring within ${REFRESH_THRESHOLD_DAYS} days`,
+  );
 
   let successCount = 0;
   let failureCount = 0;
 
   for (const page of expiringPages) {
-    const daysUntilExpiry = Math.ceil((new Date(page.page_token_expires_at) - new Date()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.ceil(
+      (new Date(page.page_token_expires_at) - new Date()) / (1000 * 60 * 60 * 24),
+    );
     console.log(`\n  Page ID ${page.id} (${page.page_name})`);
     console.log(`    Expires: ${page.page_token_expires_at} (${daysUntilExpiry} days)`);
 
@@ -202,7 +231,7 @@ async function refreshPageTokens() {
       const newPageToken = await refreshPageToken(
         metaAccount.meta_user_id,
         metaAccount.access_token,
-        page.page_id
+        page.page_id,
       );
 
       // Page tokens don't expire, but we'll set a far future date
@@ -278,4 +307,3 @@ if (require.main === module) {
 }
 
 module.exports = { refreshMetaToken, refreshPageToken, main };
-

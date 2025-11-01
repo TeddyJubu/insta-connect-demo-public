@@ -9,8 +9,11 @@ const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
 const nock = require('nock');
+// eslint-disable-next-line no-unused-vars
 const Page = require('../src/models/Page');
+// eslint-disable-next-line no-unused-vars
 const InstagramAccount = require('../src/models/InstagramAccount');
+// eslint-disable-next-line no-unused-vars
 const WebhookSubscription = require('../src/models/WebhookSubscription');
 
 // Mock models
@@ -31,40 +34,44 @@ jest.mock('../src/middleware/auth', () => ({
 // Create test app with OAuth routes
 const createTestApp = () => {
   const app = express();
-  
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
-  
-  app.use(session({
-    secret: 'test-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false, httpOnly: true },
-  }));
-  
+
+  app.use(
+    session({
+      secret: 'test-secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: false, httpOnly: true },
+    }),
+  );
+
   const stateStore = new Map();
   const STATE_TTL = 10 * 60 * 1000; // 10 minutes
   const OAUTH_STATE_SECRET = 'test-oauth-state-secret';
   const APP_ID = 'test-app-id';
+  // eslint-disable-next-line no-unused-vars
   const APP_SECRET = 'test-app-secret';
   const OAUTH_REDIRECT_URI = 'http://localhost:3000/oauth/callback';
-  const SCOPES = 'pages_manage_metadata,pages_read_engagement,instagram_basic,instagram_manage_messages';
-  
+  const SCOPES =
+    'pages_manage_metadata,pages_read_engagement,instagram_basic,instagram_manage_messages';
+
   const oauthCookieOptions = {
     httpOnly: true,
     sameSite: 'lax',
     secure: false,
     maxAge: STATE_TTL,
   };
-  
+
   function makeState() {
     const randomSeed = crypto.randomBytes(32).toString('hex');
     const state = crypto.createHmac('sha256', OAUTH_STATE_SECRET).update(randomSeed).digest('hex');
     stateStore.set(state, Date.now());
     return state;
   }
-  
+
   function buildAuthUrl(state) {
     const OAUTH_BASE = 'https://www.facebook.com/v20.0/dialog/oauth';
     const url = new URL(OAUTH_BASE);
@@ -75,7 +82,7 @@ const createTestApp = () => {
     url.searchParams.set('state', state);
     return url.toString();
   }
-  
+
   // GET /login - Start OAuth flow
   app.get('/login', (req, res) => {
     try {
@@ -86,7 +93,7 @@ const createTestApp = () => {
       res.status(500).send(String(err));
     }
   });
-  
+
   // GET /oauth/callback - Handle OAuth callback
   app.get('/oauth/callback', async (req, res) => {
     try {
@@ -97,7 +104,9 @@ const createTestApp = () => {
 
       if (!code || !state || state !== cookieState || !issuedAt || stateExpired) {
         const errorMessage = encodeURIComponent('Invalid OAuth state or authorization code');
-        const errorDetails = encodeURIComponent('The OAuth flow may have expired or been tampered with. Please try again.');
+        const errorDetails = encodeURIComponent(
+          'The OAuth flow may have expired or been tampered with. Please try again.',
+        );
         return res.redirect(`/oauth/error?error=${errorMessage}&details=${errorDetails}`);
       }
 
@@ -114,7 +123,7 @@ const createTestApp = () => {
       res.redirect(`/oauth/error?error=${errorMessage}`);
     }
   });
-  
+
   // GET /oauth/error - Show OAuth error
   app.get('/oauth/error', (req, res) => {
     const error = req.query.error || 'Unknown error';
@@ -124,7 +133,7 @@ const createTestApp = () => {
       details: decodeURIComponent(details),
     });
   });
-  
+
   return app;
 };
 
@@ -143,9 +152,7 @@ describe('OAuth Routes', () => {
 
   describe('GET /login - Start OAuth Flow', () => {
     it('should redirect to Facebook OAuth dialog', async () => {
-      const response = await request(app)
-        .get('/login')
-        .expect(302);
+      const response = await request(app).get('/login').expect(302);
 
       expect(response.headers.location).toContain('https://www.facebook.com/v20.0/dialog/oauth');
       expect(response.headers.location).toContain('client_id=test-app-id');
@@ -154,18 +161,14 @@ describe('OAuth Routes', () => {
     });
 
     it('should set oauth_state cookie', async () => {
-      const response = await request(app)
-        .get('/login')
-        .expect(302);
+      const response = await request(app).get('/login').expect(302);
 
       expect(response.headers['set-cookie']).toBeDefined();
       expect(response.headers['set-cookie'][0]).toContain('oauth_state=');
     });
 
     it('should include scopes in OAuth URL', async () => {
-      const response = await request(app)
-        .get('/login')
-        .expect(302);
+      const response = await request(app).get('/login').expect(302);
 
       expect(response.headers.location).toContain('pages_manage_metadata');
       expect(response.headers.location).toContain('instagram_manage_messages');
@@ -174,31 +177,24 @@ describe('OAuth Routes', () => {
 
   describe('GET /oauth/callback - Handle OAuth Callback', () => {
     it('should reject callback without code', async () => {
-      const response = await request(app)
-        .get('/oauth/callback?state=test-state')
-        .expect(302);
+      const response = await request(app).get('/oauth/callback?state=test-state').expect(302);
 
       expect(response.headers.location).toContain('/oauth/error');
       expect(response.headers.location).toContain('error=');
     });
 
     it('should reject callback without state', async () => {
-      const response = await request(app)
-        .get('/oauth/callback?code=test-code')
-        .expect(302);
+      const response = await request(app).get('/oauth/callback?code=test-code').expect(302);
 
       expect(response.headers.location).toContain('/oauth/error');
     });
 
     it('should reject callback with mismatched state', async () => {
       const agent = request.agent(app);
-      
+
       // First, start OAuth flow to get a valid state
-      const loginResponse = await agent.get('/login').expect(302);
-      
-      // Extract state from cookie
-      const cookies = loginResponse.headers['set-cookie'];
-      
+      await agent.get('/login').expect(302);
+
       // Try callback with different state
       const response = await agent
         .get('/oauth/callback?code=test-code&state=wrong-state')
@@ -209,21 +205,19 @@ describe('OAuth Routes', () => {
 
     it('should accept valid callback with matching state', async () => {
       const agent = request.agent(app);
-      
+
       // Start OAuth flow
       const loginResponse = await agent.get('/login').expect(302);
-      
+
       // Extract state from redirect URL
       const location = loginResponse.headers.location;
       const stateMatch = location.match(/state=([a-f0-9]+)/);
       const state = stateMatch ? stateMatch[1] : null;
-      
+
       expect(state).toBeTruthy();
-      
+
       // Callback with matching state
-      const response = await agent
-        .get(`/oauth/callback?code=test-code&state=${state}`)
-        .expect(200);
+      const response = await agent.get(`/oauth/callback?code=test-code&state=${state}`).expect(200);
 
       expect(response.body).toHaveProperty('success', true);
     });
@@ -236,13 +230,11 @@ describe('OAuth Routes', () => {
       const stateMatch = location.match(/state=([a-f0-9]+)/);
       const state = stateMatch ? stateMatch[1] : null;
 
-      const response = await agent
-        .get(`/oauth/callback?code=test-code&state=${state}`)
-        .expect(200);
+      const response = await agent.get(`/oauth/callback?code=test-code&state=${state}`).expect(200);
 
       // Check that oauth_state cookie is cleared
       const setCookieHeaders = response.headers['set-cookie'] || [];
-      const oauthStateCookie = setCookieHeaders.find(c => c.includes('oauth_state'));
+      const oauthStateCookie = setCookieHeaders.find((c) => c.includes('oauth_state'));
 
       if (oauthStateCookie) {
         // Cookie should be cleared (either with Max-Age=0 or Expires in past)
@@ -264,9 +256,7 @@ describe('OAuth Routes', () => {
     });
 
     it('should handle missing error details', async () => {
-      const response = await request(app)
-        .get('/oauth/error?error=Test%20Error')
-        .expect(200);
+      const response = await request(app).get('/oauth/error?error=Test%20Error').expect(200);
 
       expect(response.body).toEqual({
         error: 'Test Error',
@@ -275,9 +265,7 @@ describe('OAuth Routes', () => {
     });
 
     it('should handle missing error message', async () => {
-      const response = await request(app)
-        .get('/oauth/error')
-        .expect(200);
+      const response = await request(app).get('/oauth/error').expect(200);
 
       expect(response.body).toEqual({
         error: 'Unknown error',
@@ -288,13 +276,10 @@ describe('OAuth Routes', () => {
     it('should decode URL-encoded error messages', async () => {
       const errorMsg = 'Invalid OAuth state or authorization code';
       const encoded = encodeURIComponent(errorMsg);
-      
-      const response = await request(app)
-        .get(`/oauth/error?error=${encoded}`)
-        .expect(200);
+
+      const response = await request(app).get(`/oauth/error?error=${encoded}`).expect(200);
 
       expect(response.body.error).toBe(errorMsg);
     });
   });
 });
-

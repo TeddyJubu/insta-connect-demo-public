@@ -17,7 +17,7 @@ class InstagramAccount {
          username = EXCLUDED.username,
          page_id = EXCLUDED.page_id
        RETURNING *`,
-      [pageId, instagramId, username]
+      [pageId, instagramId, username],
     );
 
     return result.rows[0];
@@ -29,10 +29,7 @@ class InstagramAccount {
    * @returns {Promise<Object|null>} Instagram account or null
    */
   static async findByPageId(pageId) {
-    const result = await db.query(
-      'SELECT * FROM instagram_accounts WHERE page_id = $1',
-      [pageId]
-    );
+    const result = await db.query('SELECT * FROM instagram_accounts WHERE page_id = $1', [pageId]);
 
     return result.rows[0] || null;
   }
@@ -43,10 +40,9 @@ class InstagramAccount {
    * @returns {Promise<Object|null>} Instagram account or null
    */
   static async findByInstagramId(instagramId) {
-    const result = await db.query(
-      'SELECT * FROM instagram_accounts WHERE instagram_id = $1',
-      [instagramId]
-    );
+    const result = await db.query('SELECT * FROM instagram_accounts WHERE instagram_id = $1', [
+      instagramId,
+    ]);
 
     return result.rows[0] || null;
   }
@@ -57,14 +53,10 @@ class InstagramAccount {
    * @returns {Promise<boolean>} Success status
    */
   static async delete(id) {
-    const result = await db.query(
-      'DELETE FROM instagram_accounts WHERE id = $1',
-      [id]
-    );
+    const result = await db.query('DELETE FROM instagram_accounts WHERE id = $1', [id]);
 
     return result.rowCount > 0;
   }
 }
 
 module.exports = InstagramAccount;
-

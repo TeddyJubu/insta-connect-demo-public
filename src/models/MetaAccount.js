@@ -26,7 +26,7 @@ class MetaAccount {
          expires_at = EXCLUDED.expires_at,
          scopes = EXCLUDED.scopes
        RETURNING *`,
-      [userId, metaUserId, accessToken, tokenType, expiresAt, scopes]
+      [userId, metaUserId, accessToken, tokenType, expiresAt, scopes],
     );
 
     return result.rows[0];
@@ -40,7 +40,7 @@ class MetaAccount {
   static async findByUserId(userId) {
     const result = await db.query(
       'SELECT * FROM meta_accounts WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
-      [userId]
+      [userId],
     );
 
     return result.rows[0] || null;
@@ -52,10 +52,7 @@ class MetaAccount {
    * @returns {Promise<Object|null>} Meta account or null
    */
   static async findById(id) {
-    const result = await db.query(
-      'SELECT * FROM meta_accounts WHERE id = $1',
-      [id]
-    );
+    const result = await db.query('SELECT * FROM meta_accounts WHERE id = $1', [id]);
 
     return result.rows[0] || null;
   }
@@ -70,7 +67,7 @@ class MetaAccount {
   static async updateToken(accountId, newToken, expiresAt) {
     const result = await db.query(
       'UPDATE meta_accounts SET access_token = $1, expires_at = $2 WHERE id = $3 RETURNING *',
-      [newToken, expiresAt, accountId]
+      [newToken, expiresAt, accountId],
     );
 
     return result.rows[0];
@@ -88,7 +85,7 @@ class MetaAccount {
        AND expires_at <= CURRENT_TIMESTAMP + INTERVAL '${daysUntilExpiry} days'
        AND expires_at > CURRENT_TIMESTAMP
        ORDER BY expires_at ASC`,
-      []
+      [],
     );
 
     return result.rows;
@@ -100,14 +97,10 @@ class MetaAccount {
    * @returns {Promise<boolean>} Success status
    */
   static async delete(accountId) {
-    const result = await db.query(
-      'DELETE FROM meta_accounts WHERE id = $1',
-      [accountId]
-    );
+    const result = await db.query('DELETE FROM meta_accounts WHERE id = $1', [accountId]);
 
     return result.rowCount > 0;
   }
 }
 
 module.exports = MetaAccount;
-

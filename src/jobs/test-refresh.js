@@ -2,7 +2,7 @@
 
 /**
  * Test Token Refresh
- * 
+ *
  * This script tests the token refresh logic without calling the actual Meta API.
  * It simulates successful token refresh by updating the database directly.
  */
@@ -41,7 +41,7 @@ async function testRefresh() {
       await db.query(
         `INSERT INTO token_refresh_log (meta_account_id, refresh_type, success, old_expires_at, new_expires_at, error_message)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [account.id, 'test', true, oldExpiresAt, newExpiresAt, null]
+        [account.id, 'test', true, oldExpiresAt, newExpiresAt, null],
       );
       console.log('   ✅ Logged to token_refresh_log');
 
@@ -49,7 +49,9 @@ async function testRefresh() {
       console.log('\n4️⃣ Verifying update...');
       const updated = await MetaAccount.findById(account.id);
       console.log(`   Current expiration: ${updated.expires_at}`);
-      console.log(`   Days until expiry: ${Math.ceil((new Date(updated.expires_at) - new Date()) / (1000 * 60 * 60 * 24))}`);
+      console.log(
+        `   Days until expiry: ${Math.ceil((new Date(updated.expires_at) - new Date()) / (1000 * 60 * 60 * 24))}`,
+      );
     }
 
     // 2. Find expiring Pages
@@ -76,7 +78,7 @@ async function testRefresh() {
       await db.query(
         `INSERT INTO token_refresh_log (page_id, refresh_type, success, old_expires_at, new_expires_at, error_message)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [page.id, 'test', true, oldExpiresAt, newExpiresAt, null]
+        [page.id, 'test', true, oldExpiresAt, newExpiresAt, null],
       );
       console.log('   ✅ Logged to token_refresh_log');
     }
@@ -84,13 +86,15 @@ async function testRefresh() {
     // 3. Check refresh log
     console.log('\n7️⃣ Checking token_refresh_log...');
     const logResult = await db.query(
-      `SELECT * FROM token_refresh_log ORDER BY refreshed_at DESC LIMIT 5`
+      `SELECT * FROM token_refresh_log ORDER BY refreshed_at DESC LIMIT 5`,
     );
     console.log(`   Recent refresh attempts: ${logResult.rows.length}`);
     logResult.rows.forEach((log, i) => {
       const entityType = log.meta_account_id ? 'meta_account' : 'page';
       const entityId = log.meta_account_id || log.page_id;
-      console.log(`   ${i + 1}. ${entityType} #${entityId} (${log.refresh_type}) - ${log.success ? '✅ Success' : '❌ Failed'} at ${log.refreshed_at}`);
+      console.log(
+        `   ${i + 1}. ${entityType} #${entityId} (${log.refresh_type}) - ${log.success ? '✅ Success' : '❌ Failed'} at ${log.refreshed_at}`,
+      );
       if (log.old_expires_at) {
         console.log(`      Old expiration: ${log.old_expires_at}`);
       }
@@ -112,4 +116,3 @@ async function testRefresh() {
 }
 
 testRefresh();
-

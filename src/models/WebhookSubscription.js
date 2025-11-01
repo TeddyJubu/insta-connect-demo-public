@@ -13,7 +13,7 @@ class WebhookSubscription {
        VALUES ($1, $2)
        ON CONFLICT (page_id, field) DO NOTHING
        RETURNING *`,
-      [pageId, field]
+      [pageId, field],
     );
 
     return result.rows[0];
@@ -27,7 +27,7 @@ class WebhookSubscription {
   static async findByPageId(pageId) {
     const result = await db.query(
       'SELECT * FROM webhook_subscriptions WHERE page_id = $1 ORDER BY subscribed_at DESC',
-      [pageId]
+      [pageId],
     );
 
     return result.rows;
@@ -42,7 +42,7 @@ class WebhookSubscription {
   static async delete(pageId, field) {
     const result = await db.query(
       'DELETE FROM webhook_subscriptions WHERE page_id = $1 AND field = $2',
-      [pageId, field]
+      [pageId, field],
     );
 
     return result.rowCount > 0;
@@ -54,14 +54,12 @@ class WebhookSubscription {
    * @returns {Promise<Array<string>>} Array of field names
    */
   static async getFieldsByPageId(pageId) {
-    const result = await db.query(
-      'SELECT field FROM webhook_subscriptions WHERE page_id = $1',
-      [pageId]
-    );
+    const result = await db.query('SELECT field FROM webhook_subscriptions WHERE page_id = $1', [
+      pageId,
+    ]);
 
-    return result.rows.map(row => row.field);
+    return result.rows.map((row) => row.field);
   }
 }
 
 module.exports = WebhookSubscription;
-

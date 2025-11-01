@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser');
 const webhookDashboardRoutes = require('../src/routes/webhookDashboard');
 const Page = require('../src/models/Page');
 const WebhookEvent = require('../src/models/WebhookEvent');
+// eslint-disable-next-line no-unused-vars
 const WebhookSubscription = require('../src/models/WebhookSubscription');
 
 // Mock models
@@ -42,12 +43,14 @@ const createTestApp = () => {
   app.use(cookieParser());
 
   // Mock session middleware
-  app.use(session({
-    secret: 'test-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false, httpOnly: true },
-  }));
+  app.use(
+    session({
+      secret: 'test-secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: false, httpOnly: true },
+    }),
+  );
 
   app.use('/api', webhookDashboardRoutes);
 
@@ -67,11 +70,9 @@ describe('API Routes', () => {
       Page.findSelectedByUserId.mockResolvedValue(null);
 
       const agent = request.agent(app);
-      
+
       // Set session
-      await agent
-        .get('/api/webhook-events')
-        .expect(200);
+      await agent.get('/api/webhook-events').expect(200);
 
       const response = await agent.get('/api/webhook-events');
 
@@ -92,12 +93,10 @@ describe('API Routes', () => {
       ];
 
       Page.findSelectedByUserId.mockResolvedValue(mockPage);
-      WebhookEvent.findByPageId
-        .mockResolvedValueOnce(mockEvents)
-        .mockResolvedValueOnce(mockEvents);
+      WebhookEvent.findByPageId.mockResolvedValueOnce(mockEvents).mockResolvedValueOnce(mockEvents);
 
       const agent = request.agent(app);
-      
+
       // Manually set session
       const response = await agent
         .get('/api/webhook-events?limit=50&offset=0')
@@ -109,17 +108,12 @@ describe('API Routes', () => {
 
     it('should filter events by status', async () => {
       const mockPage = { id: 1 };
-      const mockEvents = [
-        { id: 1, event_type: 'instagram', status: 'processed' },
-      ];
+      const mockEvents = [{ id: 1, event_type: 'instagram', status: 'processed' }];
 
       Page.findSelectedByUserId.mockResolvedValue(mockPage);
-      WebhookEvent.findByPageId
-        .mockResolvedValueOnce(mockEvents)
-        .mockResolvedValueOnce(mockEvents);
+      WebhookEvent.findByPageId.mockResolvedValueOnce(mockEvents).mockResolvedValueOnce(mockEvents);
 
-      const response = await request(app)
-        .get('/api/webhook-events?status=processed');
+      const response = await request(app).get('/api/webhook-events?status=processed');
 
       expect(response.status).toBe(200);
     });
@@ -127,8 +121,7 @@ describe('API Routes', () => {
     it('should handle database errors gracefully', async () => {
       Page.findSelectedByUserId.mockRejectedValue(new Error('Database error'));
 
-      const response = await request(app)
-        .get('/api/webhook-events');
+      const response = await request(app).get('/api/webhook-events');
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Failed to fetch webhook events' });
@@ -147,8 +140,7 @@ describe('API Routes', () => {
 
       WebhookEvent.getStats.mockResolvedValue(mockStats);
 
-      const response = await request(app)
-        .get('/api/webhook-events/stats');
+      const response = await request(app).get('/api/webhook-events/stats');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockStats);
@@ -157,8 +149,7 @@ describe('API Routes', () => {
     it('should handle stats fetch errors', async () => {
       WebhookEvent.getStats.mockRejectedValue(new Error('Database error'));
 
-      const response = await request(app)
-        .get('/api/webhook-events/stats');
+      const response = await request(app).get('/api/webhook-events/stats');
 
       expect(response.status).toBe(500);
       expect(response.body).toEqual({ error: 'Failed to fetch webhook statistics' });
@@ -179,8 +170,7 @@ describe('API Routes', () => {
       Page.findSelectedByUserId.mockResolvedValue(mockPage);
       WebhookEvent.findById.mockResolvedValue(mockEvent);
 
-      const response = await request(app)
-        .get('/api/webhook-events/1');
+      const response = await request(app).get('/api/webhook-events/1');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockEvent);
@@ -189,16 +179,14 @@ describe('API Routes', () => {
     it('should return 404 for non-existent event', async () => {
       WebhookEvent.findById.mockResolvedValue(null);
 
-      const response = await request(app)
-        .get('/api/webhook-events/999');
+      const response = await request(app).get('/api/webhook-events/999');
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ error: 'Event not found' });
     });
 
     it('should handle invalid event ID', async () => {
-      const response = await request(app)
-        .get('/api/webhook-events/invalid');
+      const response = await request(app).get('/api/webhook-events/invalid');
 
       expect(response.status).toBe(400);
       expect(response.body).toEqual({ error: 'Invalid event ID' });
@@ -219,8 +207,7 @@ describe('API Routes', () => {
       WebhookEvent.findById.mockResolvedValue(mockEvent);
       WebhookEvent.retry.mockResolvedValue({ ...mockEvent, status: 'pending' });
 
-      const response = await request(app)
-        .post('/api/webhook-events/1/retry');
+      const response = await request(app).post('/api/webhook-events/1/retry');
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('message');
@@ -231,8 +218,7 @@ describe('API Routes', () => {
       Page.findSelectedByUserId.mockResolvedValue({ id: 1 });
       WebhookEvent.findById.mockResolvedValue(null);
 
-      const response = await request(app)
-        .post('/api/webhook-events/999/retry');
+      const response = await request(app).post('/api/webhook-events/999/retry');
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ error: 'Event not found' });
@@ -255,8 +241,7 @@ describe('API Routes', () => {
       const db = require('../src/db');
       db.query.mockResolvedValue({ rows: [] });
 
-      const response = await request(app)
-        .delete('/api/webhook-events/1');
+      const response = await request(app).delete('/api/webhook-events/1');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ message: 'Event deleted successfully' });
@@ -266,12 +251,10 @@ describe('API Routes', () => {
       Page.findSelectedByUserId.mockResolvedValue({ id: 1 });
       WebhookEvent.findById.mockResolvedValue(null);
 
-      const response = await request(app)
-        .delete('/api/webhook-events/999');
+      const response = await request(app).delete('/api/webhook-events/999');
 
       expect(response.status).toBe(404);
       expect(response.body).toEqual({ error: 'Event not found' });
     });
   });
 });
-

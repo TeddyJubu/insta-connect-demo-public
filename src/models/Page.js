@@ -28,7 +28,7 @@ class Page {
          is_selected = EXCLUDED.is_selected,
          meta_account_id = EXCLUDED.meta_account_id
        RETURNING *`,
-      [userId, metaAccountId, pageId, pageName, pageAccessToken, tokenExpiresAt, isSelected]
+      [userId, metaAccountId, pageId, pageName, pageAccessToken, tokenExpiresAt, isSelected],
     );
 
     return result.rows[0];
@@ -42,7 +42,7 @@ class Page {
   static async findByUserId(userId) {
     const result = await db.query(
       'SELECT * FROM pages WHERE user_id = $1 ORDER BY is_selected DESC, created_at DESC',
-      [userId]
+      [userId],
     );
 
     return result.rows;
@@ -56,7 +56,7 @@ class Page {
   static async findSelectedByUserId(userId) {
     const result = await db.query(
       'SELECT * FROM pages WHERE user_id = $1 AND is_selected = true LIMIT 1',
-      [userId]
+      [userId],
     );
 
     return result.rows[0] || null;
@@ -68,10 +68,7 @@ class Page {
    * @returns {Promise<Object|null>} Page object or null
    */
   static async findById(id) {
-    const result = await db.query(
-      'SELECT * FROM pages WHERE id = $1',
-      [id]
-    );
+    const result = await db.query('SELECT * FROM pages WHERE id = $1', [id]);
 
     return result.rows[0] || null;
   }
@@ -83,10 +80,10 @@ class Page {
    * @returns {Promise<Object|null>} Page object or null
    */
   static async findByUserAndPageId(userId, pageId) {
-    const result = await db.query(
-      'SELECT * FROM pages WHERE user_id = $1 AND page_id = $2',
-      [userId, pageId]
-    );
+    const result = await db.query('SELECT * FROM pages WHERE user_id = $1 AND page_id = $2', [
+      userId,
+      pageId,
+    ]);
 
     return result.rows[0] || null;
   }
@@ -104,15 +101,12 @@ class Page {
       await client.query('BEGIN');
 
       // Unselect all pages for this user
-      await client.query(
-        'UPDATE pages SET is_selected = false WHERE user_id = $1',
-        [userId]
-      );
+      await client.query('UPDATE pages SET is_selected = false WHERE user_id = $1', [userId]);
 
       // Select the specified page
       const result = await client.query(
         'UPDATE pages SET is_selected = true WHERE id = $1 AND user_id = $2 RETURNING *',
-        [pageDbId, userId]
+        [pageDbId, userId],
       );
 
       await client.query('COMMIT');
@@ -136,7 +130,7 @@ class Page {
   static async updateToken(pageDbId, newToken, expiresAt) {
     const result = await db.query(
       'UPDATE pages SET page_access_token = $1, token_expires_at = $2 WHERE id = $3 RETURNING *',
-      [newToken, expiresAt, pageDbId]
+      [newToken, expiresAt, pageDbId],
     );
 
     return result.rows[0];
@@ -148,10 +142,7 @@ class Page {
    * @returns {Promise<boolean>} Success status
    */
   static async delete(pageDbId) {
-    const result = await db.query(
-      'DELETE FROM pages WHERE id = $1',
-      [pageDbId]
-    );
+    const result = await db.query('DELETE FROM pages WHERE id = $1', [pageDbId]);
 
     return result.rowCount > 0;
   }
@@ -168,7 +159,7 @@ class Page {
        AND token_expires_at <= CURRENT_TIMESTAMP + INTERVAL '${daysUntilExpiry} days'
        AND token_expires_at > CURRENT_TIMESTAMP
        ORDER BY token_expires_at ASC`,
-      []
+      [],
     );
 
     return result.rows;
@@ -176,4 +167,3 @@ class Page {
 }
 
 module.exports = Page;
-

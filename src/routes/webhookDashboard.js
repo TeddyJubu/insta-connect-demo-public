@@ -11,16 +11,11 @@ const { requireAuth } = require('../middleware/auth');
  */
 router.get('/webhook-events', requireAuth, async (req, res) => {
   try {
-    const {
-      status,
-      eventType,
-      limit = 50,
-      offset = 0,
-    } = req.query;
+    const { status, limit = 50, offset = 0 } = req.query;
 
     // Get user's selected page
     const selectedPage = await Page.findSelectedByUserId(req.session.userId);
-    
+
     if (!selectedPage) {
       return res.json({
         events: [],
@@ -77,20 +72,20 @@ router.get('/webhook-events/stats', requireAuth, async (req, res) => {
 router.get('/webhook-events/:id', requireAuth, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
-    
+
     if (isNaN(eventId)) {
       return res.status(400).json({ error: 'Invalid event ID' });
     }
 
     const event = await WebhookEvent.findById(eventId);
-    
+
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
     // Verify the event belongs to user's page
     const selectedPage = await Page.findSelectedByUserId(req.session.userId);
-    
+
     if (!selectedPage || event.page_id !== selectedPage.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -109,28 +104,28 @@ router.get('/webhook-events/:id', requireAuth, async (req, res) => {
 router.post('/webhook-events/:id/retry', requireAuth, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
-    
+
     if (isNaN(eventId)) {
       return res.status(400).json({ error: 'Invalid event ID' });
     }
 
     const event = await WebhookEvent.findById(eventId);
-    
+
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
     // Verify the event belongs to user's page
     const selectedPage = await Page.findSelectedByUserId(req.session.userId);
-    
+
     if (!selectedPage || event.page_id !== selectedPage.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
     // Only allow retry for failed or dead_letter events
     if (event.status !== 'failed' && event.status !== 'dead_letter') {
-      return res.status(400).json({ 
-        error: `Cannot retry event with status: ${event.status}` 
+      return res.status(400).json({
+        error: `Cannot retry event with status: ${event.status}`,
       });
     }
 
@@ -156,20 +151,20 @@ router.post('/webhook-events/:id/retry', requireAuth, async (req, res) => {
 router.delete('/webhook-events/:id', requireAuth, async (req, res) => {
   try {
     const eventId = parseInt(req.params.id);
-    
+
     if (isNaN(eventId)) {
       return res.status(400).json({ error: 'Invalid event ID' });
     }
 
     const event = await WebhookEvent.findById(eventId);
-    
+
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
     // Verify the event belongs to user's page
     const selectedPage = await Page.findSelectedByUserId(req.session.userId);
-    
+
     if (!selectedPage || event.page_id !== selectedPage.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -187,4 +182,3 @@ router.delete('/webhook-events/:id', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
-

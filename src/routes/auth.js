@@ -16,7 +16,7 @@ router.get('/register', (req, res) => {
   if (req.session.userId) {
     return res.redirect('/');
   }
-  
+
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -128,11 +128,10 @@ router.post('/register', async (req, res) => {
       return res.json({
         success: true,
         user: { id: user.id, email: user.email },
-        message: 'Registration successful'
+        message: 'Registration successful',
       });
     }
     res.redirect('/');
-
   } catch (error) {
     console.error('❌ Registration error:', error);
     const errorMsg = 'Registration failed. Please try again.';
@@ -246,11 +245,10 @@ router.post('/login', async (req, res) => {
       return res.json({
         success: true,
         user: { id: user.id, email: user.email },
-        message: 'Login successful'
+        message: 'Login successful',
       });
     }
     res.redirect('/');
-
   } catch (error) {
     console.error('❌ Login error:', error);
     const errorMsg = 'Login failed. Please try again.';
@@ -284,7 +282,7 @@ router.post('/logout', (req, res) => {
     if (isJsonRequest) {
       return res.json({
         success: true,
-        message: 'Logged out successfully'
+        message: 'Logged out successfully',
       });
     }
     res.redirect('/auth/login?message=' + encodeURIComponent('Logged out successfully'));
@@ -300,14 +298,13 @@ router.get('/status', (req, res) => {
     res.json({
       authenticated: true,
       userId: req.session.userId,
-      email: req.session.userEmail
+      email: req.session.userEmail,
     });
   } else {
     res.json({
-      authenticated: false
+      authenticated: false,
     });
   }
 });
 
 module.exports = router;
-

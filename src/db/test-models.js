@@ -35,7 +35,7 @@ async function runTests() {
       accessToken: 'test_access_token',
       tokenType: 'long_lived',
       expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
-      scopes: 'pages_show_list,instagram_basic'
+      scopes: 'pages_show_list,instagram_basic',
     });
     console.log('   ✅ MetaAccount created:', metaAccount.meta_user_id);
 
@@ -47,7 +47,7 @@ async function runTests() {
       pageId: 'page_123',
       pageName: 'Test Page',
       pageAccessToken: 'page_access_token',
-      tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
+      tokenExpiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
     });
     console.log('   ✅ Page created:', page.page_name);
 
@@ -61,7 +61,7 @@ async function runTests() {
     const igAccount = await InstagramAccount.upsert({
       pageId: page.id,
       instagramId: 'ig_123',
-      username: 'test_instagram_user'
+      username: 'test_instagram_user',
     });
     console.log('   ✅ Instagram account created:', igAccount.username);
 
@@ -81,7 +81,6 @@ async function runTests() {
     console.log('   ✅ Found expiring meta tokens:', expiringMeta.length);
 
     console.log('\n✅ All tests passed!\n');
-
   } catch (error) {
     console.error('\n❌ Test failed:', error.message);
     console.error(error);
@@ -92,4 +91,3 @@ async function runTests() {
 }
 
 runTests();
-

@@ -3,10 +3,10 @@ const WebhookEvent = require('../models/WebhookEvent');
 
 /**
  * Webhook Event Processor
- * 
+ *
  * This script processes pending webhook events from the database.
  * It implements retry logic with exponential backoff and dead-letter handling.
- * 
+ *
  * Processing flow:
  * 1. Fetch pending events from database
  * 2. Process each event (extract data, validate, etc.)
@@ -19,9 +19,9 @@ const WebhookEvent = require('../models/WebhookEvent');
 const MAX_RETRIES = 3;
 const BATCH_SIZE = 10;
 const RETRY_DELAYS = [
-  1000,   // 1 second
-  5000,   // 5 seconds
-  30000,  // 30 seconds
+  1000, // 1 second
+  5000, // 5 seconds
+  30000, // 30 seconds
 ];
 
 /**
@@ -40,9 +40,7 @@ async function processEvent(event) {
     await WebhookEvent.markProcessing(event.id);
 
     // Parse the payload
-    const payload = typeof event.payload === 'string' 
-      ? JSON.parse(event.payload) 
-      : event.payload;
+    const payload = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload;
 
     // Process based on event type
     // In a real application, you would:
@@ -57,13 +55,13 @@ async function processEvent(event) {
     if (payload.object === 'instagram') {
       for (const entry of payload.entry || []) {
         console.log(`  Processing entry for Instagram ID: ${entry.id}`);
-        
+
         // Process messaging events
         if (entry.messaging) {
           for (const message of entry.messaging) {
             console.log(`    Message from: ${message.sender?.id}`);
             console.log(`    Message text: ${message.message?.text || '(no text)'}`);
-            
+
             // TODO: Store message in database
             // TODO: Trigger notification
             // TODO: Auto-reply if needed
@@ -75,7 +73,7 @@ async function processEvent(event) {
           for (const change of entry.changes) {
             console.log(`    Change field: ${change.field}`);
             console.log(`    Change value:`, change.value);
-            
+
             // TODO: Process based on field type
             // - comments: Store comment, notify user
             // - mentions: Store mention, notify user
@@ -88,7 +86,6 @@ async function processEvent(event) {
     // Mark as processed
     await WebhookEvent.markProcessed(event.id);
     console.log(`✅ Event ${event.id} processed successfully`);
-
   } catch (error) {
     console.error(`❌ Error processing event ${event.id}:`, error.message);
 
@@ -100,7 +97,9 @@ async function processEvent(event) {
     } else {
       // Mark as failed and increment retry count
       await WebhookEvent.markFailed(event.id, error.message, true);
-      console.log(`🔄 Event ${event.id} marked for retry (attempt ${event.retry_count + 1}/${MAX_RETRIES})`);
+      console.log(
+        `🔄 Event ${event.id} marked for retry (attempt ${event.retry_count + 1}/${MAX_RETRIES})`,
+      );
     }
   }
 }
@@ -111,9 +110,9 @@ async function processEvent(event) {
  */
 async function processPendingEvents() {
   console.log('\n🔄 Fetching pending events...');
-  
+
   const events = await WebhookEvent.findPending(BATCH_SIZE);
-  
+
   if (events.length === 0) {
     console.log('No pending events to process');
     return { processed: 0, failed: 0 };
@@ -143,9 +142,9 @@ async function processPendingEvents() {
  */
 async function processRetryableEvents() {
   console.log('\n🔄 Fetching retryable failed events...');
-  
+
   const events = await WebhookEvent.findRetryable(MAX_RETRIES, BATCH_SIZE);
-  
+
   if (events.length === 0) {
     console.log('No retryable events to process');
     return { processed: 0, failed: 0 };
@@ -159,9 +158,9 @@ async function processRetryableEvents() {
   for (const event of events) {
     // Calculate delay based on retry count
     const delay = RETRY_DELAYS[event.retry_count] || RETRY_DELAYS[RETRY_DELAYS.length - 1];
-    
+
     console.log(`⏳ Waiting ${delay}ms before retry...`);
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
     try {
       await processEvent(event);
@@ -247,4 +246,3 @@ module.exports = {
   processPendingEvents,
   processRetryableEvents,
 };
-

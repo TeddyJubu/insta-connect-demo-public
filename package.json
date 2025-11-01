@@ -6,7 +6,11 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.js\"",
+    "format:check": "prettier --check \"**/*.js\""
   },
   "keywords": [],
   "author": "",
@@ -22,5 +26,14 @@
     "helmet": "^7.0.0",
     "node-cron": "^4.2.1",
     "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "jest": "^30.2.0",
+    "nock": "^14.0.10",
+    "prettier": "^3.6.2",
+    "supertest": "^7.1.4"
   }
 }

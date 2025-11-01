@@ -7,18 +7,13 @@ class WebhookEvent {
    * @returns {Promise<Object>} Created event
    */
   static async create(eventData) {
-    const {
-      pageId = null,
-      eventType,
-      payload,
-      status = 'pending',
-    } = eventData;
+    const { pageId = null, eventType, payload, status = 'pending' } = eventData;
 
     const result = await db.query(
       `INSERT INTO webhook_events (page_id, event_type, payload, status)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [pageId, eventType, JSON.stringify(payload), status]
+      [pageId, eventType, JSON.stringify(payload), status],
     );
 
     return result.rows[0];
@@ -30,10 +25,7 @@ class WebhookEvent {
    * @returns {Promise<Object|null>} Event or null
    */
   static async findById(id) {
-    const result = await db.query(
-      'SELECT * FROM webhook_events WHERE id = $1',
-      [id]
-    );
+    const result = await db.query('SELECT * FROM webhook_events WHERE id = $1', [id]);
 
     return result.rows[0] || null;
   }
@@ -45,11 +37,7 @@ class WebhookEvent {
    * @returns {Promise<Array>} Array of events
    */
   static async findByPageId(pageId, options = {}) {
-    const {
-      status = null,
-      limit = 100,
-      offset = 0,
-    } = options;
+    const { status = null, limit = 100, offset = 0 } = options;
 
     let query = 'SELECT * FROM webhook_events WHERE page_id = $1';
     const params = [pageId];
@@ -59,7 +47,11 @@ class WebhookEvent {
       params.push(status);
     }
 
-    query += ' ORDER BY received_at DESC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    query +=
+      ' ORDER BY received_at DESC LIMIT $' +
+      (params.length + 1) +
+      ' OFFSET $' +
+      (params.length + 2);
     params.push(limit, offset);
 
     const result = await db.query(query, params);
@@ -72,12 +64,7 @@ class WebhookEvent {
    * @returns {Promise<Object>} Object with events and total count
    */
   static async findAll(options = {}) {
-    const {
-      status = null,
-      eventType = null,
-      limit = 100,
-      offset = 0,
-    } = options;
+    const { status = null, eventType = null, limit = 100, offset = 0 } = options;
 
     let query = 'SELECT * FROM webhook_events WHERE 1=1';
     const params = [];
@@ -122,7 +109,7 @@ class WebhookEvent {
        WHERE status = 'pending' 
        ORDER BY received_at ASC 
        LIMIT $1`,
-      [limit]
+      [limit],
     );
 
     return result.rows;
@@ -141,7 +128,7 @@ class WebhookEvent {
        AND retry_count < $1
        ORDER BY received_at ASC 
        LIMIT $2`,
-      [maxRetries, limit]
+      [maxRetries, limit],
     );
 
     return result.rows;
@@ -155,10 +142,7 @@ class WebhookEvent {
    * @returns {Promise<Object>} Updated event
    */
   static async updateStatus(id, status, options = {}) {
-    const {
-      error = null,
-      incrementRetry = false,
-    } = options;
+    const { error = null, incrementRetry = false } = options;
 
     let query = 'UPDATE webhook_events SET status = $1';
     const params = [status, id];
@@ -234,7 +218,7 @@ class WebhookEvent {
        SET status = 'pending', last_error = NULL 
        WHERE id = $1 
        RETURNING *`,
-      [id]
+      [id],
     );
 
     return result.rows[0];
@@ -250,7 +234,7 @@ class WebhookEvent {
       `DELETE FROM webhook_events 
        WHERE status = 'processed' 
        AND processed_at < CURRENT_TIMESTAMP - INTERVAL '${daysOld} days'`,
-      []
+      [],
     );
 
     return result.rowCount;
@@ -268,7 +252,7 @@ class WebhookEvent {
         MAX(received_at) as last_received
        FROM webhook_events
        GROUP BY status`,
-      []
+      [],
     );
 
     const stats = {
@@ -281,10 +265,10 @@ class WebhookEvent {
       last_received: null,
     };
 
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       stats[row.status] = parseInt(row.count);
       stats.total += parseInt(row.count);
-      
+
       if (row.last_received && (!stats.last_received || row.last_received > stats.last_received)) {
         stats.last_received = row.last_received;
       }
@@ -295,4 +279,3 @@ class WebhookEvent {
 }
 
 module.exports = WebhookEvent;
-
