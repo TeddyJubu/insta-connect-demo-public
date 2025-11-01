@@ -24,6 +24,9 @@ const { validateWebhookSignature } = require('./src/middleware/webhookValidation
 // Import utilities
 const { graphApi } = require('./src/utils/graphApi');
 const { createLogger, requestLoggingMiddleware } = require('./src/utils/logger');
+const { logger, requestLoggingMiddleware: winstonRequestMiddleware, errorLoggingMiddleware } = require('./src/utils/winstonLogger');
+const { metricsCollector, metricsMiddleware } = require('./src/utils/metrics');
+const { alertManager } = require('./src/utils/alerts');
 
 const fetch =
   global.fetch ||
@@ -101,6 +104,8 @@ app.use(cookieParser());
 
 // Add request logging middleware
 app.use(requestLoggingMiddleware);
+app.use(winstonRequestMiddleware);
+app.use(metricsMiddleware);
 
 // Session configuration
 app.use(
@@ -700,6 +705,30 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   }
+});
+
+// Metrics endpoint for monitoring
+app.get('/metrics', (req, res) => {
+  const metrics = metricsCollector.getMetrics();
+  res.status(200).json(metrics);
+});
+
+// Alerts endpoint for operational monitoring
+app.get('/alerts', (req, res) => {
+  const summary = alertManager.getSummary();
+  res.status(200).json(summary);
+});
+
+// Alerts history endpoint
+app.get('/alerts/history', (req, res) => {
+  const limit = Number(req.query.limit) || 100;
+  const history = alertManager.getAlertHistory(limit);
+  res.status(200).json({
+    timestamp: new Date().toISOString(),
+    limit,
+    count: history.length,
+    alerts: history,
+  });
 });
 
 app.listen(Number(PORT), () => {
