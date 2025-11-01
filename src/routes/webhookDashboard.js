@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const WebhookEvent = require('../models/WebhookEvent');
 const Page = require('../models/Page');
+const InstagramAccount = require('../models/InstagramAccount');
 const { requireAuth } = require('../middleware/auth');
 
 /**
@@ -178,6 +179,76 @@ router.delete('/webhook-events/:id', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error deleting webhook event:', error);
     res.status(500).json({ error: 'Failed to delete webhook event' });
+  }
+});
+
+/**
+ * GET /api/pages
+ * Get all pages for the authenticated user
+ */
+router.get('/pages', requireAuth, async (req, res) => {
+  try {
+    const pages = await Page.findByUserId(req.session.userId);
+    res.json({ pages });
+  } catch (error) {
+    console.error('Error fetching pages:', error);
+    res.status(500).json({ error: 'Failed to fetch pages' });
+  }
+});
+
+/**
+ * POST /api/pages/select
+ * Select a page as the active page
+ */
+router.post('/pages/select', requireAuth, async (req, res) => {
+  try {
+    const { pageId } = req.body;
+
+    if (!pageId) {
+      return res.status(400).json({ error: 'Page ID is required' });
+    }
+
+    // Verify the page belongs to the user
+    const page = await Page.findByUserAndPageId(req.session.userId, pageId);
+
+    if (!page) {
+      return res.status(404).json({ error: 'Page not found' });
+    }
+
+    // Set as selected
+    await Page.setSelected(req.session.userId, page.id);
+
+    console.log(`✅ Page selected: ${page.page_name} by user ${req.session.userId}`);
+
+    res.json({ message: 'Page selected successfully', page });
+  } catch (error) {
+    console.error('Error selecting page:', error);
+    res.status(500).json({ error: 'Failed to select page' });
+  }
+});
+
+/**
+ * GET /api/instagram-accounts
+ * Get Instagram accounts for the authenticated user
+ */
+router.get('/instagram-accounts', requireAuth, async (req, res) => {
+  try {
+    // Get user's selected page
+    const selectedPage = await Page.findSelectedByUserId(req.session.userId);
+
+    if (!selectedPage) {
+      return res.json({ accounts: [] });
+    }
+
+    // Get Instagram account for this page
+    const instagram = await InstagramAccount.findByPageId(selectedPage.id);
+
+    res.json({
+      accounts: instagram ? [instagram] : [],
+    });
+  } catch (error) {
+    console.error('Error fetching Instagram accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch Instagram accounts' });
   }
 });
 
