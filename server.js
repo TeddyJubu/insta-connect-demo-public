@@ -14,6 +14,10 @@ const Page = require('./src/models/Page');
 const InstagramAccount = require('./src/models/InstagramAccount');
 const WebhookSubscription = require('./src/models/WebhookSubscription');
 const WebhookEvent = require('./src/models/WebhookEvent');
+const MessageQueue = require('./src/models/MessageQueue');
+
+// Import N8N integration service
+const { extractMessageData, forwardToN8N } = require('./src/services/n8nIntegration');
 
 // Import routes and middleware
 const authRoutes = require('./src/routes/auth');
@@ -674,7 +678,7 @@ app.post('/webhook', validateWebhookSignature(APP_SECRET), async (req, res) => {
   // Meta requires a 200 response within 20 seconds
   res.sendStatus(200);
 
-  // Queue the event for processing
+  // Queue the event for processing asynchronously
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
       console.log('⚠️  Received empty webhook payload');
@@ -687,12 +691,13 @@ app.post('/webhook', validateWebhookSignature(APP_SECRET), async (req, res) => {
     const payload = req.body;
     const eventType = payload.object || 'unknown';
     let pageId = null;
+    let instagramId = null;
 
     // Try to find the page ID from the payload
     // Instagram webhooks have entry.id which is the Instagram account ID
     // We need to look up the page_id from our database
     if (payload.entry && payload.entry.length > 0) {
-      const instagramId = payload.entry[0].id;
+      instagramId = payload.entry[0].id;
 
       // Look up the page by Instagram account ID
       const result = await db.query(
@@ -714,6 +719,53 @@ app.post('/webhook', validateWebhookSignature(APP_SECRET), async (req, res) => {
     });
 
     console.log(`✅ Webhook event queued: ID ${event.id}, Type: ${eventType}`);
+
+    // Process message asynchronously (don't wait for completion)
+    // This allows us to respond to Meta immediately
+    setImmediate(async () => {
+      try {
+        // Extract message data from webhook
+        const messageData = extractMessageData(payload);
+
+        if (!messageData) {
+          console.log('⚠️  No message data extracted from webhook');
+          return;
+        }
+
+        console.log('📝 Processing message:', {
+          messageId: messageData.messageId,
+          senderId: messageData.senderId,
+        });
+
+        // Create message queue entry
+        const queueItem = await MessageQueue.create({
+          webhookEventId: event.id,
+          pageId,
+          instagramId,
+          senderId: messageData.senderId,
+          recipientId: messageData.recipientId,
+          messageText: messageData.messageText,
+          messageId: messageData.messageId,
+        });
+
+        console.log(`✅ Message queued for processing: ID ${queueItem.id}`);
+
+        // Forward to N8N if enabled
+        if (process.env.N8N_ENABLED === 'true') {
+          const forwarded = await forwardToN8N(messageData, queueItem.id);
+
+          if (forwarded) {
+            console.log(`✅ Message forwarded to N8N: ${messageData.messageId}`);
+          } else {
+            console.error(`❌ Failed to forward message to N8N: ${messageData.messageId}`);
+          }
+        } else {
+          console.log('ℹ️  N8N integration is disabled');
+        }
+      } catch (error) {
+        console.error('❌ Error processing message asynchronously:', error);
+      }
+    });
   } catch (error) {
     console.error('❌ Error queueing webhook event:', error);
     // Don't throw - we already sent 200 response

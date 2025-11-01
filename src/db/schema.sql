@@ -151,3 +151,43 @@ CREATE TRIGGER update_instagram_accounts_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- Message processing queue table: tracks N8N message processing workflow
+CREATE TABLE IF NOT EXISTS message_processing_queue (
+  id SERIAL PRIMARY KEY,
+  webhook_event_id INTEGER REFERENCES webhook_events(id) ON DELETE CASCADE,
+  page_id INTEGER REFERENCES pages(id) ON DELETE SET NULL,
+  instagram_id VARCHAR(255),
+  sender_id VARCHAR(255) NOT NULL,
+  recipient_id VARCHAR(255) NOT NULL,
+  message_text TEXT,
+  message_id VARCHAR(255),
+  n8n_workflow_id VARCHAR(255),
+  n8n_execution_id VARCHAR(255),
+  ai_response TEXT,
+  status VARCHAR(50) DEFAULT 'pending',
+  retry_count INTEGER DEFAULT 0,
+  max_retries INTEGER DEFAULT 3,
+  last_error TEXT,
+  last_retry_at TIMESTAMP WITH TIME ZONE,
+  next_retry_at TIMESTAMP WITH TIME ZONE,
+  sent_to_n8n_at TIMESTAMP WITH TIME ZONE,
+  received_from_n8n_at TIMESTAMP WITH TIME ZONE,
+  sent_to_instagram_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_queue_webhook_event_id ON message_processing_queue(webhook_event_id);
+CREATE INDEX IF NOT EXISTS idx_message_queue_page_id ON message_processing_queue(page_id);
+CREATE INDEX IF NOT EXISTS idx_message_queue_status ON message_processing_queue(status);
+CREATE INDEX IF NOT EXISTS idx_message_queue_sender_id ON message_processing_queue(sender_id);
+CREATE INDEX IF NOT EXISTS idx_message_queue_next_retry_at ON message_processing_queue(next_retry_at);
+CREATE INDEX IF NOT EXISTS idx_message_queue_created_at ON message_processing_queue(created_at DESC);
+
+-- Trigger to auto-update updated_at for message_processing_queue
+DROP TRIGGER IF EXISTS update_message_queue_updated_at ON message_processing_queue;
+CREATE TRIGGER update_message_queue_updated_at
+  BEFORE UPDATE ON message_processing_queue
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+

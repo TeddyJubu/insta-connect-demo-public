@@ -27,6 +27,7 @@ async function runMigration() {
     console.log('   - webhook_events');
     console.log('   - token_refresh_log');
     console.log('   - sessions');
+    console.log('   - message_processing_queue');
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
     throw error;
