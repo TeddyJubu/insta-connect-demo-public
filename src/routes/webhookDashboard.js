@@ -189,7 +189,22 @@ router.delete('/webhook-events/:id', requireAuth, async (req, res) => {
 router.get('/pages', requireAuth, async (req, res) => {
   try {
     const pages = await Page.findByUserId(req.session.userId);
-    res.json({ pages });
+
+    // Transform snake_case to camelCase for frontend
+    const transformedPages = pages.map(page => ({
+      id: page.id,
+      userId: page.user_id,
+      metaAccountId: page.meta_account_id,
+      pageId: page.page_id,
+      pageName: page.page_name,
+      pageAccessToken: page.page_access_token,
+      tokenExpiresAt: page.token_expires_at,
+      isSelected: page.is_selected,
+      createdAt: page.created_at,
+      updatedAt: page.updated_at,
+    }));
+
+    res.json({ pages: transformedPages });
   } catch (error) {
     console.error('Error fetching pages:', error);
     res.status(500).json({ error: 'Failed to fetch pages' });
@@ -243,8 +258,18 @@ router.get('/instagram-accounts', requireAuth, async (req, res) => {
     // Get Instagram account for this page
     const instagram = await InstagramAccount.findByPageId(selectedPage.id);
 
+    // Transform snake_case to camelCase for frontend
+    const transformedAccounts = instagram ? [{
+      id: instagram.id,
+      pageId: instagram.page_id,
+      instagramId: instagram.instagram_id,
+      username: instagram.username,
+      createdAt: instagram.created_at,
+      updatedAt: instagram.updated_at,
+    }] : [];
+
     res.json({
-      accounts: instagram ? [instagram] : [],
+      accounts: transformedAccounts,
     });
   } catch (error) {
     console.error('Error fetching Instagram accounts:', error);
