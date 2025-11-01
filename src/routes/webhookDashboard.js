@@ -7,6 +7,25 @@ const InstagramAccount = require('../models/InstagramAccount');
 const { requireAuth } = require('../middleware/auth');
 
 /**
+ * Transform webhook event from snake_case to camelCase
+ */
+function transformWebhookEvent(event) {
+  return {
+    id: event.id,
+    pageId: event.page_id,
+    eventType: event.event_type,
+    payload: event.payload,
+    status: event.status,
+    retryCount: event.retry_count,
+    lastError: event.last_error,
+    receivedAt: event.received_at,
+    processedAt: event.processed_at,
+    createdAt: event.created_at,
+    updatedAt: event.updated_at,
+  };
+}
+
+/**
  * GET /api/webhook-events
  * Get webhook events with filtering and pagination
  */
@@ -40,8 +59,11 @@ router.get('/webhook-events', requireAuth, async (req, res) => {
       offset: 0,
     });
 
+    // Transform events to camelCase
+    const transformedEvents = events.map(transformWebhookEvent);
+
     res.json({
-      events,
+      events: transformedEvents,
       total: allEvents.length,
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -59,7 +81,19 @@ router.get('/webhook-events', requireAuth, async (req, res) => {
 router.get('/webhook-events/stats', requireAuth, async (req, res) => {
   try {
     const stats = await WebhookEvent.getStats();
-    res.json(stats);
+
+    // Transform stats to camelCase
+    const transformedStats = {
+      total: stats.total || 0,
+      pending: stats.pending || 0,
+      processing: stats.processing || 0,
+      processed: stats.processed || 0,
+      failed: stats.failed || 0,
+      deadLetter: stats.dead_letter || 0,
+      lastReceived: stats.last_received || null,
+    };
+
+    res.json(transformedStats);
   } catch (error) {
     console.error('Error fetching webhook stats:', error);
     res.status(500).json({ error: 'Failed to fetch webhook statistics' });
@@ -91,7 +125,10 @@ router.get('/webhook-events/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    res.json(event);
+    // Transform to camelCase
+    const transformedEvent = transformWebhookEvent(event);
+
+    res.json(transformedEvent);
   } catch (error) {
     console.error('Error fetching webhook event:', error);
     res.status(500).json({ error: 'Failed to fetch webhook event' });
