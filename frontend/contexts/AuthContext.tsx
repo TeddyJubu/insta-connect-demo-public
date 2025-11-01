@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.getStatus();
       const data: AuthStatus = response.data;
 
-      if (data.authenticated) {
+      if (data.authenticated && data.userId && data.email) {
         // Status endpoint returns { authenticated: true, userId, email }
         setUser({
           id: data.userId,
