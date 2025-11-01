@@ -682,6 +682,26 @@ app.post('/webhook', validateWebhookSignature(APP_SECRET), async (req, res) => {
   }
 });
 
+// Health check endpoint for container orchestration
+app.get('/health', async (req, res) => {
+  try {
+    // Check database connection
+    await db.query('SELECT 1');
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: NODE_ENV,
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 app.listen(Number(PORT), () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
