@@ -1,4 +1,5 @@
-const fetch = require('node-fetch');
+// Use built-in fetch in Node.js 18+
+// const fetch = require('node-fetch'); // Not needed in Node.js 18+
 const MessageQueue = require('../models/MessageQueue');
 const { createLogger } = require('../utils/logger');
 const { graphApi } = require('../utils/graphApi');
