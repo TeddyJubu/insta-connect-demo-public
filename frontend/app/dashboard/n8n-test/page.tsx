@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import axios from 'axios';
+import api from '@/lib/api';
 
 interface CallbackEvent {
   id: number;
@@ -52,12 +52,10 @@ export default function N8NTestPage() {
   const fetchEvents = useCallback(async () => {
     try {
       setError(null);
-      const response = await axios.get<ApiResponse>('/api/n8n/callback-events?limit=20');
+      const response = await api.get<ApiResponse>('/api/n8n/callback-events?limit=20');
       setEvents(response.data.events);
-    } catch (err) {
-      const message = axios.isAxiosError(err) 
-        ? err.response?.data?.error || err.message 
-        : 'Failed to fetch events';
+    } catch (err: any) {
+      const message = err.response?.data?.error || err.message || 'Failed to fetch events';
       setError(message);
     } finally {
       setLoading(false);
