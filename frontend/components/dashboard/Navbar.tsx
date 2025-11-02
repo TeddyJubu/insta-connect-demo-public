@@ -61,6 +61,12 @@ export function Navbar() {
             >
               Webhooks
             </Link>
+            <Link
+              href="/dashboard/n8n-test"
+              className="text-sm font-medium text-slate-700 hover:text-slate-900"
+            >
+              N8N Test
+            </Link>
           </div>
 
           {/* User Menu */}

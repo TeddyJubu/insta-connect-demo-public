@@ -630,4 +630,84 @@ router.post('/n8n/metrics/reset', requireAuth, securityLogging, async (req, res)
   }
 });
 
+/**
+ * GET /api/n8n/callback-events
+ * Get recent N8N callback events for testing dashboard
+ * Returns the last 20 callback events with their status and details
+ */
+router.get('/n8n/callback-events', requireAuth, async (req, res) => {
+  try {
+    const { limit = 20, offset = 0 } = req.query;
+
+    // Get user's selected page
+    const selectedPage = await Page.findSelectedByUserId(req.session.userId);
+
+    if (!selectedPage) {
+      return res.status(400).json({ error: 'No page selected' });
+    }
+
+    // Query message_processing_queue for recent callback events
+    const result = await db.query(
+      `SELECT
+        id,
+        message_id,
+        sender_id,
+        recipient_id,
+        message_text,
+        ai_response,
+        status,
+        n8n_execution_id,
+        n8n_workflow_id,
+        last_error,
+        retry_count,
+        sent_to_n8n_at,
+        received_from_n8n_at,
+        sent_to_instagram_at,
+        created_at,
+        updated_at
+      FROM message_processing_queue
+      WHERE page_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3`,
+      [selectedPage.id, parseInt(limit), parseInt(offset)],
+    );
+
+    // Transform snake_case to camelCase
+    const events = result.rows.map((row) => ({
+      id: row.id,
+      messageId: row.message_id,
+      senderId: row.sender_id,
+      recipientId: row.recipient_id,
+      messageText: row.message_text,
+      aiResponse: row.ai_response,
+      status: row.status,
+      n8nExecutionId: row.n8n_execution_id,
+      n8nWorkflowId: row.n8n_workflow_id,
+      lastError: row.last_error,
+      retryCount: row.retry_count,
+      sentToN8nAt: row.sent_to_n8n_at,
+      receivedFromN8nAt: row.received_from_n8n_at,
+      sentToInstagramAt: row.sent_to_instagram_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    // Get total count
+    const countResult = await db.query(
+      `SELECT COUNT(*) as total FROM message_processing_queue WHERE page_id = $1`,
+      [selectedPage.id],
+    );
+
+    res.json({
+      events,
+      total: parseInt(countResult.rows[0].total),
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+  } catch (error) {
+    logger.error('Error fetching N8N callback events', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch callback events' });
+  }
+});
+
 module.exports = router;
